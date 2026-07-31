@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1a4a"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#g)"/>
+  <circle cx="340" cy="45" r="105" fill="#ffffff" opacity="0.06"/>
+  <circle cx="40" cy="270" r="90" fill="#ffffff" opacity="0.06"/>
+  <text x="50%" y="120.3" text-anchor="middle" font-family="'IBM Plex Sans Thai','Tahoma',sans-serif" font-size="22" font-weight="700" fill="#ffffff">กิจกรรม Open D</text><text x="50%" y="150" text-anchor="middle" font-family="'IBM Plex Sans Thai','Tahoma',sans-serif" font-size="22" font-weight="700" fill="#ffffff">ay เยี่ยมชมโรง</text><text x="50%" y="179.7" text-anchor="middle" font-family="'IBM Plex Sans Thai','Tahoma',sans-serif" font-size="22" font-weight="700" fill="#ffffff">งานผลิต</text>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#16296b"/>
+      <stop offset="100%" stop-color="#2f4bb0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#g)"/>
+  <circle cx="1020" cy="120" r="280" fill="#ffffff" opacity="0.06"/>
+  <circle cx="120" cy="720" r="240" fill="#ffffff" opacity="0.06"/>
+  <text x="50%" y="359.5" text-anchor="middle" font-family="'IBM Plex Sans Thai','Tahoma',sans-serif" font-size="30" font-weight="700" fill="#ffffff">งาน อย. Expo ที่อิ</text><text x="50%" y="400" text-anchor="middle" font-family="'IBM Plex Sans Thai','Tahoma',sans-serif" font-size="30" font-weight="700" fill="#ffffff">มแพค ชาเลนเจอร์ 2 </text><text x="50%" y="440.5" text-anchor="middle" font-family="'IBM Plex Sans Thai','Tahoma',sans-serif" font-size="30" font-weight="700" fill="#ffffff">เมืองทองธานี</text>
+</svg>

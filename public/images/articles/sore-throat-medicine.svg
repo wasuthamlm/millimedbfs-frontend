@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#16296b"/>
+      <stop offset="100%" stop-color="#3a5fd9"/>
+    </linearGradient>
+  </defs>
+  <rect width="480" height="360" fill="url(#g)"/>
+  <circle cx="408" cy="54" r="125.99999999999999" fill="#ffffff" opacity="0.06"/>
+  <circle cx="48" cy="324" r="108" fill="#ffffff" opacity="0.06"/>
+  <text x="50%" y="120.6" text-anchor="middle" font-family="'IBM Plex Sans Thai','Tahoma',sans-serif" font-size="22" font-weight="700" fill="#ffffff">เจ็บคอกินยาอะไ</text><text x="50%" y="150.3" text-anchor="middle" font-family="'IBM Plex Sans Thai','Tahoma',sans-serif" font-size="22" font-weight="700" fill="#ffffff">ร? รวมวิธีบรรเ</text><text x="50%" y="180" text-anchor="middle" font-family="'IBM Plex Sans Thai','Tahoma',sans-serif" font-size="22" font-weight="700" fill="#ffffff">ทาตามอาการ กลื</text><text x="50%" y="209.7" text-anchor="middle" font-family="'IBM Plex Sans Thai','Tahoma',sans-serif" font-size="22" font-weight="700" fill="#ffffff">นแล้วเจ็บควรดู</text><text x="50%" y="239.4" text-anchor="middle" font-family="'IBM Plex Sans Thai','Tahoma',sans-serif" font-size="22" font-weight="700" fill="#ffffff">แลแบบไหน</text>
+</svg>
