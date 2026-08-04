@@ -3,24 +3,27 @@
 import { DatabaseIcon, CheckIcon } from "@/components/ui/admin-icons";
 import { SaveButton } from "@/components/admin/SaveButton";
 import type { PageSection, DeviceVisibility } from "@/data/admin-pages";
-import { articles } from "@/data/articles";
-import { newsItems } from "@/data/news";
-
-function matchedCountFor(section: PageSection) {
-  if (section.type === "articles") return articles.length;
-  if (section.type === "latest-news") return newsItems.length;
-  return section.matchedCount ?? 0;
-}
 
 export function SectionSettingsPanel({
   section,
   onChange,
+  onSave,
+  articleCount,
+  newsCount,
 }: {
   section: PageSection;
   onChange: (patch: Partial<PageSection>) => void;
+  onSave: () => Promise<void>;
+  articleCount: number;
+  newsCount: number;
 }) {
   const hasDataBinding = section.type === "articles" || section.type === "latest-news";
-  const matched = matchedCountFor(section);
+  const matched =
+    section.type === "articles"
+      ? articleCount
+      : section.type === "latest-news"
+        ? newsCount
+        : (section.matchedCount ?? 0);
 
   const toggleVisibility = (key: keyof DeviceVisibility) => {
     onChange({ visibility: { ...section.visibility, [key]: !section.visibility[key] } });
@@ -51,7 +54,7 @@ export function SectionSettingsPanel({
               {label}
             </label>
           ))}
-          <SaveButton label="บันทึกการแสดงผล" />
+          <SaveButton label="บันทึกการแสดงผล" onSave={onSave} />
         </div>
       </div>
 
@@ -143,7 +146,7 @@ export function SectionSettingsPanel({
         )}
 
         <div className="flex justify-end">
-          <SaveButton />
+          <SaveButton onSave={onSave} />
         </div>
       </div>
     </div>

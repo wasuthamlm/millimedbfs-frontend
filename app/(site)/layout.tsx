@@ -2,6 +2,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { PromoBar } from "@/components/layout/PromoBar";
 import { Footer } from "@/components/layout/Footer";
 import { ScrollToTopButton } from "@/components/layout/ScrollToTopButton";
+import { SecretAdminAccess } from "@/components/layout/SecretAdminAccess";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <main className="flex-1">{children}</main>
       <Footer />
       <ScrollToTopButton />
+      <SecretAdminAccess />
     </div>
   );
 }

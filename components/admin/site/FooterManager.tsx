@@ -3,11 +3,20 @@
 import { useState } from "react";
 import { PlusIcon, TrashIcon } from "@/components/ui/admin-icons";
 import { SaveButton } from "@/components/admin/SaveButton";
-import { footerColumns as initialColumns, footerContact, type FooterColumn } from "@/data/admin-footer";
+import type { FooterColumn } from "@/data/admin-footer";
+import { saveFooterConfig } from "@/app/admin/site/footer/actions";
 
-export function FooterManager() {
+type FooterContactState = { phone: string; email: string; address: string; tagline: string };
+
+export function FooterManager({
+  initialColumns,
+  initialContact,
+}: {
+  initialColumns: FooterColumn[];
+  initialContact: FooterContactState;
+}) {
   const [columns, setColumns] = useState<FooterColumn[]>(initialColumns);
-  const [contact, setContact] = useState(footerContact);
+  const [contact, setContact] = useState<FooterContactState>(initialContact);
 
   const updateColumnTitle = (colId: string, title: string) => {
     setColumns((prev) => prev.map((c) => (c.id === colId ? { ...c, title } : c)));
@@ -131,7 +140,7 @@ export function FooterManager() {
       </div>
 
       <div className="flex justify-end">
-        <SaveButton />
+        <SaveButton onSave={() => saveFooterConfig(columns, contact)} />
       </div>
     </div>
   );

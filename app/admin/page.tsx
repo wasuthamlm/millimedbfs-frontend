@@ -3,42 +3,57 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { StatCard } from "@/components/admin/StatCard";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { GridIcon, BoxIcon, FileTextIcon, MailIcon, ClockIcon } from "@/components/ui/admin-icons";
-import { adminStats, adminLatestArticles } from "@/data/admin-mock";
+import { prisma } from "@/lib/prisma";
 import { formatThaiDate } from "@/lib/utils";
+import { auth } from "@/lib/auth";
 
-export default function AdminDashboardPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdminDashboardPage() {
+  const [session, totalProducts, totalArticles, publishedArticles, pendingApproval, latestArticles] =
+    await Promise.all([
+      auth(),
+      prisma.product.count(),
+      prisma.post.count(),
+      prisma.post.count({ where: { status: "PUBLISHED" } }),
+      prisma.post.count({ where: { status: "DRAFT" } }),
+      prisma.post.findMany({ take: 5, orderBy: { updatedAt: "desc" } }),
+    ]);
+
+  const unreadMessages = 0;
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         icon={GridIcon}
         title="Dashboard"
-        subtitle="ยินดีต้อนรับ, wasutha@millimedthailand.com"
+        subtitle={`ยินดีต้อนรับ, ${session?.user?.email ?? ""}`}
       />
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={BoxIcon}
           label="สินค้าทั้งหมด"
-          value={adminStats.totalProducts}
+          value={totalProducts}
           caption="ทุก status"
         />
         <StatCard
           icon={FileTextIcon}
           label="บทความทั้งหมด"
-          value={adminStats.totalArticles}
-          caption={`เผยแพร่แล้ว ${adminStats.publishedArticles} บทความ`}
+          value={totalArticles}
+          caption={`เผยแพร่แล้ว ${publishedArticles} บทความ`}
         />
         <StatCard
           icon={ClockIcon}
           label="รายการรออนุมัติ"
-          value={adminStats.pendingApproval}
+          value={pendingApproval}
           caption="ฉบับร่างที่ยังไม่อนุมัติ"
           tone="gold"
         />
         <StatCard
           icon={MailIcon}
           label="ข้อความที่ยังไม่อ่าน"
-          value={adminStats.unreadMessages}
+          value={unreadMessages}
           caption="จากผู้เยี่ยมชม"
         />
       </div>
@@ -64,21 +79,21 @@ export default function AdminDashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {adminLatestArticles.map((article) => (
-                <tr key={article.id} className="border-b border-slate-50 last:border-0">
+              {latestArticles.map((post) => (
+                <tr key={post.id} className="border-b border-slate-50 last:border-0">
                   <td className="max-w-xs truncate px-6 py-3.5 font-medium text-slate-800">
-                    {article.title}
+                    {post.titleTh}
                   </td>
                   <td className="px-6 py-3.5">
                     <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">
-                      {article.type}
+                      {post.kind === "ARTICLE" ? "article" : "news"}
                     </span>
                   </td>
                   <td className="px-6 py-3.5">
-                    <StatusBadge status={article.status} />
+                    <StatusBadge status={post.status} />
                   </td>
                   <td className="px-6 py-3.5 text-slate-400">
-                    {formatThaiDate(article.updatedAt)}
+                    {formatThaiDate(post.updatedAt.toISOString())}
                   </td>
                 </tr>
               ))}

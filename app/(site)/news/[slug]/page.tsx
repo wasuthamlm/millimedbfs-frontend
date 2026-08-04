@@ -2,11 +2,19 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/ui/Container";
-import { newsItems } from "@/data/news";
+import { prisma } from "@/lib/prisma";
+import { toNewsView } from "@/lib/post-view";
 import { formatThaiDate } from "@/lib/utils";
 
-export function generateStaticParams() {
-  return newsItems.map((item) => ({ slug: item.slug }));
+export const dynamic = "force-dynamic";
+
+async function getNewsPost(slug: string) {
+  const post = await prisma.post.findUnique({
+    where: { slug },
+    include: { coverImage: true },
+  });
+  if (!post || post.kind !== "NEWS" || post.status !== "PUBLISHED") return null;
+  return post;
 }
 
 export async function generateMetadata({
@@ -15,8 +23,9 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const item = newsItems.find((n) => n.slug === slug);
-  if (!item) return {};
+  const post = await getNewsPost(slug);
+  if (!post) return {};
+  const item = toNewsView(post);
   return {
     title: item.title,
     description: item.excerpt,
@@ -30,8 +39,9 @@ export default async function NewsDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const item = newsItems.find((n) => n.slug === slug);
-  if (!item) notFound();
+  const post = await getNewsPost(slug);
+  if (!post) notFound();
+  const item = toNewsView(post);
 
   return (
     <Container className="flex flex-col gap-6 py-14 sm:py-20">
@@ -42,6 +52,11 @@ export default async function NewsDetailPage({
       <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">{item.title}</h1>
       {item.excerpt && (
         <p className="text-base leading-relaxed text-slate-600">{item.excerpt}</p>
+      )}
+      {post.bodyTh && (
+        <p className="whitespace-pre-line text-base leading-relaxed text-slate-600">
+          {post.bodyTh}
+        </p>
       )}
     </Container>
   );

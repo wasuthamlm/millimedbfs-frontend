@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { fadeInUp } from "@/lib/motion";
-import type { NewsItem } from "@/data/news";
+import type { NewsView as NewsItem } from "@/lib/post-view";
 
 export function NewsFeatured({ item }: { item: NewsItem }) {
   return (

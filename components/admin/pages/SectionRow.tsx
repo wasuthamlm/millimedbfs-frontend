@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/admin-icons";
 import { cn } from "@/lib/utils";
 import type { PageSection } from "@/data/admin-pages";
+import type { ArticleView, NewsView } from "@/lib/post-view";
 import { SectionSettingsPanel } from "./SectionSettingsPanel";
 import { SectionPreviewBody } from "./SectionPreviewBody";
 
@@ -23,6 +24,11 @@ export function SectionRow({
   onMoveDown,
   onDelete,
   onChange,
+  onSave,
+  articleCount,
+  newsCount,
+  previewArticles,
+  previewNews,
 }: {
   section: PageSection;
   isFirst: boolean;
@@ -33,6 +39,11 @@ export function SectionRow({
   onMoveDown: () => void;
   onDelete: () => void;
   onChange: (patch: Partial<PageSection>) => void;
+  onSave: () => Promise<void>;
+  articleCount: number;
+  newsCount: number;
+  previewArticles: ArticleView[];
+  previewNews: NewsView[];
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
@@ -88,10 +99,18 @@ export function SectionRow({
       </div>
 
       <div className="border-t border-slate-100">
-        <SectionPreviewBody section={section} />
+        <SectionPreviewBody section={section} previewArticles={previewArticles} previewNews={previewNews} />
       </div>
 
-      {isEditing && <SectionSettingsPanel section={section} onChange={onChange} />}
+      {isEditing && (
+        <SectionSettingsPanel
+          section={section}
+          onChange={onChange}
+          onSave={onSave}
+          articleCount={articleCount}
+          newsCount={newsCount}
+        />
+      )}
     </div>
   );
 }

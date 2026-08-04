@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "@/components/ui/icons";
-import type { NewsItem } from "@/data/news";
+import type { NewsView as NewsItem } from "@/lib/post-view";
 
 export function NewsCard({ item }: { item: NewsItem }) {
   return (

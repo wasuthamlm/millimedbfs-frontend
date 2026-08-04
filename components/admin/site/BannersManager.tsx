@@ -5,9 +5,10 @@ import Image from "next/image";
 import { PlusIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon } from "@/components/ui/admin-icons";
 import { SaveButton } from "@/components/admin/SaveButton";
 import { Toggle } from "@/components/admin/Toggle";
-import { banners as initialBanners, type Banner } from "@/data/admin-banners";
+import type { Banner } from "@/data/admin-banners";
+import { saveBanners } from "@/app/admin/site/banners/actions";
 
-export function BannersManager() {
+export function BannersManager({ initialBanners }: { initialBanners: Banner[] }) {
   const [banners, setBanners] = useState<Banner[]>(initialBanners);
 
   const move = (index: number, direction: -1 | 1) => {
@@ -129,7 +130,7 @@ export function BannersManager() {
       </div>
 
       <div className="flex justify-end">
-        <SaveButton />
+        <SaveButton onSave={() => saveBanners(banners)} />
       </div>
     </div>
   );

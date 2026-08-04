@@ -4,7 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import { Toggle } from "@/components/admin/Toggle";
 import { SaveButton } from "@/components/admin/SaveButton";
-import { popupConfig as initialConfig, type PopupFrequency } from "@/data/admin-popup";
+import type { PopupConfig, PopupFrequency } from "@/data/admin-popup";
+import { savePopupConfig } from "@/app/admin/site/popup/actions";
 
 const frequencyLabels: Record<PopupFrequency, string> = {
   "every-visit": "ทุกครั้งที่เข้าชม",
@@ -12,7 +13,7 @@ const frequencyLabels: Record<PopupFrequency, string> = {
   "once-per-session": "ครั้งเดียวต่อเซสชัน",
 };
 
-export function PopupManager() {
+export function PopupManager({ initialConfig }: { initialConfig: PopupConfig }) {
   const [config, setConfig] = useState(initialConfig);
 
   return (
@@ -94,7 +95,7 @@ export function PopupManager() {
       </div>
 
       <div className="flex justify-end">
-        <SaveButton />
+        <SaveButton onSave={() => savePopupConfig(config)} />
       </div>
     </div>
   );

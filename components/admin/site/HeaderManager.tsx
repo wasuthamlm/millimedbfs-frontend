@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { PlusIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon } from "@/components/ui/admin-icons";
 import { SaveButton } from "@/components/admin/SaveButton";
-import { navLinks, type NavLink } from "@/data/nav";
+import type { NavLink } from "@/data/nav";
+import { saveNavLinks } from "@/app/admin/site/header/actions";
 
 let nextId = 1000;
 
-export function HeaderManager() {
-  const [items, setItems] = useState<NavLink[]>(navLinks);
+export function HeaderManager({ initialLinks }: { initialLinks: NavLink[] }) {
+  const [items, setItems] = useState<NavLink[]>(initialLinks);
 
   const move = (index: number, direction: -1 | 1) => {
     setItems((prev) => {
@@ -109,7 +110,7 @@ export function HeaderManager() {
       </div>
 
       <div className="flex justify-end">
-        <SaveButton />
+        <SaveButton onSave={() => saveNavLinks(items)} />
       </div>
     </div>
   );

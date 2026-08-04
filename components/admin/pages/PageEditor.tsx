@@ -4,15 +4,25 @@ import { useState } from "react";
 import { EyeIcon } from "@/components/ui/admin-icons";
 import { SaveButton } from "@/components/admin/SaveButton";
 import type { AdminPage, PageSection } from "@/data/admin-pages";
+import type { ArticleView, NewsView } from "@/lib/post-view";
 import { SectionRow } from "./SectionRow";
 import { PreviewModal } from "./PreviewModal";
+import { saveSections } from "@/app/admin/pages/[slug]/actions";
 
 export function PageEditor({
   page,
   initialSections,
+  articleCount,
+  newsCount,
+  previewArticles,
+  previewNews,
 }: {
   page: AdminPage;
   initialSections: PageSection[];
+  articleCount: number;
+  newsCount: number;
+  previewArticles: ArticleView[];
+  previewNews: NewsView[];
 }) {
   const [sections, setSections] = useState(initialSections);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -53,7 +63,10 @@ export function PageEditor({
             <EyeIcon className="h-4 w-4" />
             ดูตัวอย่าง
           </button>
-          <SaveButton label="บันทึกลำดับ" />
+          <SaveButton
+            label="บันทึกลำดับ"
+            onSave={() => saveSections(page.slug, page.titleTh, sections)}
+          />
         </div>
       </div>
 
@@ -75,12 +88,24 @@ export function PageEditor({
               onMoveDown={() => move(index, 1)}
               onDelete={() => removeSection(section.id)}
               onChange={(patch) => patchSection(section.id, patch)}
+              onSave={() => saveSections(page.slug, page.titleTh, sections)}
+              articleCount={articleCount}
+              newsCount={newsCount}
+              previewArticles={previewArticles}
+              previewNews={previewNews}
             />
           ))}
         </div>
       )}
 
-      {previewOpen && <PreviewModal sections={sections} onClose={() => setPreviewOpen(false)} />}
+      {previewOpen && (
+        <PreviewModal
+          sections={sections}
+          onClose={() => setPreviewOpen(false)}
+          previewArticles={previewArticles}
+          previewNews={previewNews}
+        />
+      )}
     </div>
   );
 }

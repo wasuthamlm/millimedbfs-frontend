@@ -12,7 +12,7 @@ export function StatusBadge({ status }: { status: string }) {
     <span
       className={cn(
         "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-        styles[status] ?? "bg-slate-100 text-slate-500 ring-1 ring-slate-200"
+        styles[status.toLowerCase()] ?? "bg-slate-100 text-slate-500 ring-1 ring-slate-200"
       )}
     >
       {status}

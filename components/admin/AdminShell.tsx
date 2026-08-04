@@ -5,8 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { signOut } from "next-auth/react";
 import { adminNavItems } from "@/data/admin-nav";
-import { PanelLeftIcon, LogOutIcon } from "@/components/ui/admin-icons";
+import { PanelLeftIcon, LogOutIcon, GlobeIcon } from "@/components/ui/admin-icons";
 import { ChevronDown } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +36,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const toggleMenu = (href: string) => {
     setOpenMenu((prev) => (prev === href ? null : href));
   };
+
+  if (pathname === "/admin/login") {
+    return <div className="min-h-screen bg-slate-50">{children}</div>;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -181,14 +186,24 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </ul>
         </nav>
 
-        <div className="border-t border-white/10 px-3 py-3">
+        <div className="flex flex-col gap-1 border-t border-white/10 px-3 py-3">
           <Link
             href="/"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10"
+          >
+            <GlobeIcon className="h-5 w-5 shrink-0" />
+            {!collapsed && <span>ไปที่เว็บไซต์หลัก</span>}
+          </Link>
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: "/admin/login" })}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10"
           >
             <LogOutIcon className="h-5 w-5 shrink-0" />
             {!collapsed && <span>ออกจากระบบ</span>}
-          </Link>
+          </button>
         </div>
       </aside>
 

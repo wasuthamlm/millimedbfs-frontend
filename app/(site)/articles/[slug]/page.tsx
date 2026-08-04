@@ -2,11 +2,19 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/ui/Container";
-import { articles } from "@/data/articles";
+import { prisma } from "@/lib/prisma";
+import { toArticleView } from "@/lib/post-view";
 import { formatThaiDate } from "@/lib/utils";
 
-export function generateStaticParams() {
-  return articles.map((article) => ({ slug: article.slug }));
+export const dynamic = "force-dynamic";
+
+async function getArticle(slug: string) {
+  const post = await prisma.post.findUnique({
+    where: { slug },
+    include: { coverImage: true },
+  });
+  if (!post || post.kind !== "ARTICLE" || post.status !== "PUBLISHED") return null;
+  return post;
 }
 
 export async function generateMetadata({
@@ -15,8 +23,9 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const article = articles.find((a) => a.slug === slug);
-  if (!article) return {};
+  const post = await getArticle(slug);
+  if (!post) return {};
+  const article = toArticleView(post);
   return {
     title: article.title,
     openGraph: { images: [article.image] },
@@ -29,8 +38,9 @@ export default async function ArticleDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const article = articles.find((a) => a.slug === slug);
-  if (!article) notFound();
+  const post = await getArticle(slug);
+  if (!post) notFound();
+  const article = toArticleView(post);
 
   return (
     <Container className="flex flex-col gap-6 py-14 sm:py-20">
@@ -50,6 +60,11 @@ export default async function ArticleDetailPage({
       )}
       <p className="text-sm text-slate-400">{formatThaiDate(article.publishedAt)}</p>
       <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">{article.title}</h1>
+      {post.bodyTh && (
+        <p className="whitespace-pre-line text-base leading-relaxed text-slate-600">
+          {post.bodyTh}
+        </p>
+      )}
     </Container>
   );
 }

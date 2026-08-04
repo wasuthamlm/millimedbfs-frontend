@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-import { newsItems } from "@/data/news";
-import { articles } from "@/data/articles";
+import { prisma } from "@/lib/prisma";
 
 const staticRoutes = [
   "",
@@ -17,21 +16,18 @@ const staticRoutes = [
   "/contact",
 ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = "https://millimedbfs.com";
+  const posts = await prisma.post.findMany({ where: { status: "PUBLISHED" } });
 
   return [
     ...staticRoutes.map((path) => ({
       url: `${base}${path}`,
       lastModified: new Date(),
     })),
-    ...newsItems.map((item) => ({
-      url: `${base}/news/${item.slug}`,
-      lastModified: new Date(item.publishedAt),
-    })),
-    ...articles.map((article) => ({
-      url: `${base}/articles/${article.slug}`,
-      lastModified: new Date(article.publishedAt),
+    ...posts.map((post) => ({
+      url: `${base}/${post.kind === "NEWS" ? "news" : "articles"}/${post.slug}`,
+      lastModified: post.publishedAt ?? post.createdAt,
     })),
   ];
 }

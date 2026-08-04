@@ -1,17 +1,35 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { FileTextIcon } from "@/components/ui/admin-icons";
-import { adminAllArticles, adminStats } from "@/data/admin-mock";
+import { FileTextIcon, PlusIcon } from "@/components/ui/admin-icons";
+import { prisma } from "@/lib/prisma";
 import { formatThaiDate } from "@/lib/utils";
 
-export default function AdminArticlesPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AdminArticlesPage() {
+  const [posts, totalArticles, publishedArticles] = await Promise.all([
+    prisma.post.findMany({ orderBy: { updatedAt: "desc" } }),
+    prisma.post.count(),
+    prisma.post.count({ where: { status: "PUBLISHED" } }),
+  ]);
+
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        icon={FileTextIcon}
-        title="บทความ"
-        subtitle={`บทความทั้งหมด ${adminStats.totalArticles} รายการ • เผยแพร่แล้ว ${adminStats.publishedArticles}`}
-      />
+      <div className="flex items-start justify-between gap-4">
+        <PageHeader
+          icon={FileTextIcon}
+          title="บทความ"
+          subtitle={`บทความทั้งหมด ${totalArticles} รายการ • เผยแพร่แล้ว ${publishedArticles}`}
+        />
+        <Link
+          href="/admin/articles/new"
+          className="inline-flex items-center gap-2 rounded-lg bg-brand-navy px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-navy-dark"
+        >
+          <PlusIcon className="h-4 w-4" />
+          เพิ่มบทความใหม่
+        </Link>
+      </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -24,24 +42,33 @@ export default function AdminArticlesPage() {
             </tr>
           </thead>
           <tbody>
-            {adminAllArticles.map((article) => (
-              <tr key={article.id} className="border-b border-slate-50 last:border-0">
+            {posts.map((post) => (
+              <tr key={post.id} className="border-b border-slate-50 last:border-0">
                 <td className="max-w-md truncate px-6 py-3.5 font-medium text-slate-800">
-                  {article.title}
+                  <Link href={`/admin/articles/${post.id}/edit`} className="hover:text-brand-navy">
+                    {post.titleTh}
+                  </Link>
                 </td>
                 <td className="px-6 py-3.5">
                   <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">
-                    {article.type}
+                    {post.kind === "ARTICLE" ? "article" : "news"}
                   </span>
                 </td>
                 <td className="px-6 py-3.5">
-                  <StatusBadge status={article.status} />
+                  <StatusBadge status={post.status} />
                 </td>
                 <td className="px-6 py-3.5 text-slate-400">
-                  {formatThaiDate(article.updatedAt)}
+                  {formatThaiDate(post.updatedAt.toISOString())}
                 </td>
               </tr>
             ))}
+            {posts.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-6 py-8 text-center text-slate-400">
+                  ยังไม่มีบทความ
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

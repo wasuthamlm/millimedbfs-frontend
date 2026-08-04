@@ -3,9 +3,18 @@ import { PromoBar } from "@/components/layout/PromoBar";
 import { LatestNews } from "@/components/home/LatestNews";
 import { ArticlesGrid } from "@/components/home/ArticlesGrid";
 import type { PageSection } from "@/data/admin-pages";
+import type { ArticleView, NewsView } from "@/lib/post-view";
 import { banners } from "@/data/admin-banners";
 
-export function SectionPreviewBody({ section }: { section: PageSection }) {
+export function SectionPreviewBody({
+  section,
+  previewArticles,
+  previewNews,
+}: {
+  section: PageSection;
+  previewArticles: ArticleView[];
+  previewNews: NewsView[];
+}) {
   switch (section.type) {
     case "hero-banners": {
       const active = banners.find((b) => b.active);
@@ -31,9 +40,14 @@ export function SectionPreviewBody({ section }: { section: PageSection }) {
         </div>
       );
     case "latest-news":
-      return <LatestNews />;
+      return <LatestNews items={previewNews.slice(0, section.itemsToShow ?? 3)} />;
     case "articles":
-      return <ArticlesGrid />;
+      return (
+        <ArticlesGrid
+          items={previewArticles.slice(0, section.itemsToShow ?? 8)}
+          columns={section.columns}
+        />
+      );
     default:
       return null;
   }

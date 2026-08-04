@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { XCircleIcon } from "@/components/ui/admin-icons";
 import { cn } from "@/lib/utils";
 import type { PageSection, DeviceVisibility } from "@/data/admin-pages";
+import type { ArticleView, NewsView } from "@/lib/post-view";
 import { SectionPreviewBody } from "./SectionPreviewBody";
 
 type Device = keyof DeviceVisibility;
@@ -25,9 +26,13 @@ const deviceLabels: Record<Device, string> = {
 export function PreviewModal({
   sections,
   onClose,
+  previewArticles,
+  previewNews,
 }: {
   sections: PageSection[];
   onClose: () => void;
+  previewArticles: ArticleView[];
+  previewNews: NewsView[];
 }) {
   const [device, setDevice] = useState<Device>("desktop");
 
@@ -70,7 +75,12 @@ export function PreviewModal({
               .filter((s) => s.visibility[device])
               .sort((a, b) => a.order - b.order)
               .map((s) => (
-                <SectionPreviewBody key={s.id} section={s} />
+                <SectionPreviewBody
+                  key={s.id}
+                  section={s}
+                  previewArticles={previewArticles}
+                  previewNews={previewNews}
+                />
               ))}
             <Footer />
           </div>

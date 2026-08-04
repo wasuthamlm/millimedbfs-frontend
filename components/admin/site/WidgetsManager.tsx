@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { Toggle } from "@/components/admin/Toggle";
 import { SaveButton } from "@/components/admin/SaveButton";
-import { widgets as initialWidgets, type Widget } from "@/data/admin-widgets";
+import type { Widget } from "@/data/admin-widgets";
+import { saveWidgets } from "@/app/admin/site/widgets/actions";
 
-export function WidgetsManager() {
+export function WidgetsManager({ initialWidgets }: { initialWidgets: Widget[] }) {
   const [widgets, setWidgets] = useState<Widget[]>(initialWidgets);
 
   const toggle = (id: string, enabled: boolean) => {
@@ -31,7 +32,7 @@ export function WidgetsManager() {
       </div>
 
       <div className="flex justify-end">
-        <SaveButton />
+        <SaveButton onSave={() => saveWidgets(widgets)} />
       </div>
     </div>
   );

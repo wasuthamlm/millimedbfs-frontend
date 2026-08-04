@@ -1,0 +1,294 @@
+// Millimed BFS — database schema
+// See plan: backend/API architecture (Prisma + Supabase Postgres)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────── Identity / Auth.js ─────────────────────────
+
+enum Role {
+  ADMIN
+  EDITOR
+  CUSTOMER
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String?
+  name          String?
+  role          Role      @default(CUSTOMER)
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts     Account[]
+  sessions     Session[]
+  posts        Post[]  @relation("PostAuthor")
+  mediaUploads Media[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ───────────────────────── Editorial (Post unifies news + articles) ─────────────────────────
+
+enum PostKind {
+  ARTICLE
+  NEWS
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Post {
+  id           String     @id @default(cuid())
+  slug         String     @unique
+  kind         PostKind
+  status       PostStatus @default(DRAFT)
+  titleTh      String
+  titleEn      String?
+  excerptTh    String?
+  excerptEn    String?
+  bodyTh       String?
+  bodyEn       String?
+  coverImageId String?
+  coverImage   Media?     @relation(fields: [coverImageId], references: [id])
+  category     String?
+  featured     Boolean    @default(false)
+  publishedAt  DateTime?
+  authorId     String?
+  author       User?      @relation("PostAuthor", fields: [authorId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([kind, status, publishedAt])
+}
+
+// ───────────────────────── Products ─────────────────────────
+
+enum ProductStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  sku           String        @unique
+  nameTh        String
+  nameEn        String?
+  descriptionTh String?
+  descriptionEn String?
+  status        ProductStatus @default(DRAFT)
+  imageId       String?
+  image         Media?        @relation(fields: [imageId], references: [id])
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+// ───────────────────────── Pages / page builder ─────────────────────────
+
+enum PageStatus {
+  PUBLISHED
+  DRAFT
+}
+
+model Page {
+  id       String        @id @default(cuid())
+  slug     String        @unique
+  titleTh  String
+  titleEn  String?
+  status   PageStatus    @default(DRAFT)
+  seoTitle String?
+  seoDesc  String?
+
+  sections  PageSection[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+enum SectionType {
+  HERO_BANNERS
+  CTA_BAR
+  COMPANY_INTRO
+  LATEST_NEWS
+  ARTICLES
+  CUSTOM
+}
+
+model PageSection {
+  id             String      @id @default(cuid())
+  pageId         String
+  page           Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  order          Int
+  type           SectionType
+  titleTh        String
+  titleEn        String?
+  visibleDesktop Boolean     @default(true)
+  visibleTablet  Boolean     @default(true)
+  visibleMobile  Boolean     @default(true)
+  columns        Int?
+  itemsToShow    Int?
+  // per-type variable config (e.g. sourceLabel, category filter) — validated with Zod per SectionType on write
+  config         Json?
+
+  @@index([pageId, order])
+}
+
+// ───────────────────────── Navigation ─────────────────────────
+
+enum NavPlacement {
+  HEADER
+  FOOTER
+}
+
+model NavLink {
+  id        String       @id @default(cuid())
+  labelTh   String
+  labelEn   String?
+  href      String
+  order     Int
+  placement NavPlacement @default(HEADER)
+
+  parentId String?
+  parent   NavLink?  @relation("NavChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children NavLink[] @relation("NavChildren")
+}
+
+// ───────────────────────── Site chrome: banners / footer / popup / widgets ─────────────────────────
+
+model Banner {
+  id      String  @id @default(cuid())
+  titleTh String
+  imageId String?
+  image   Media?  @relation(fields: [imageId], references: [id])
+  link    String?
+  order   Int
+  active  Boolean @default(true)
+}
+
+model FooterColumn {
+  id    String       @id @default(cuid())
+  title String
+  order Int
+  links FooterLink[]
+}
+
+model FooterLink {
+  id       String       @id @default(cuid())
+  columnId String
+  column   FooterColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  label    String
+  href     String
+  order    Int
+}
+
+// Singleton row (id = "singleton")
+model FooterContact {
+  id      String  @id @default(cuid())
+  phone   String?
+  email   String?
+  address String?
+  tagline String?
+}
+
+// Singleton row (id = "singleton")
+model PopupConfig {
+  id        String    @id @default(cuid())
+  enabled   Boolean   @default(false)
+  titleTh   String?
+  imageId   String?
+  image     Media?    @relation(fields: [imageId], references: [id])
+  link      String?
+  frequency String?
+  startDate DateTime?
+  endDate   DateTime?
+}
+
+model Widget {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  name        String
+  description String?
+  enabled     Boolean @default(false)
+}
+
+// ───────────────────────── New entities: contact + media ─────────────────────────
+
+enum MessageStatus {
+  NEW
+  READ
+  ARCHIVED
+}
+
+model ContactMessage {
+  id        String        @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  body      String
+  status    MessageStatus @default(NEW)
+  createdAt DateTime      @default(now())
+}
+
+model Media {
+  id           String   @id @default(cuid())
+  url          String
+  filename     String
+  mimeType     String
+  size         Int
+  width        Int?
+  height       Int?
+  uploadedById String?
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  posts    Post[]
+  banners  Banner[]
+  products Product[]
+  popups   PopupConfig[]
+}
