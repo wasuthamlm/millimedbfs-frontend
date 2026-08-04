@@ -7,6 +7,8 @@ import { XCircleIcon } from "@/components/ui/admin-icons";
 import { cn } from "@/lib/utils";
 import type { PageSection, DeviceVisibility } from "@/data/admin-pages";
 import type { ArticleView, NewsView } from "@/lib/post-view";
+import type { NavLink } from "@/data/nav";
+import type { FooterColumnData, FooterContactData } from "@/components/layout/Footer";
 import { SectionPreviewBody } from "./SectionPreviewBody";
 
 type Device = keyof DeviceVisibility;
@@ -28,11 +30,17 @@ export function PreviewModal({
   onClose,
   previewArticles,
   previewNews,
+  navLinks,
+  footerColumns,
+  footerContact,
 }: {
   sections: PageSection[];
   onClose: () => void;
   previewArticles: ArticleView[];
   previewNews: NewsView[];
+  navLinks: NavLink[];
+  footerColumns: FooterColumnData[];
+  footerContact: FooterContactData | null;
 }) {
   const [device, setDevice] = useState<Device>("desktop");
 
@@ -70,7 +78,7 @@ export function PreviewModal({
 
         <div className="flex-1 overflow-y-auto bg-slate-100 p-4 sm:p-8">
           <div className={cn("mx-auto overflow-hidden rounded-xl bg-white shadow-lg transition-all", deviceWidths[device])}>
-            <Navbar />
+            <Navbar navLinks={navLinks} />
             {sections
               .filter((s) => s.visibility[device])
               .sort((a, b) => a.order - b.order)
@@ -82,7 +90,7 @@ export function PreviewModal({
                   previewNews={previewNews}
                 />
               ))}
-            <Footer />
+            <Footer columns={footerColumns} contact={footerContact} />
           </div>
         </div>
       </div>

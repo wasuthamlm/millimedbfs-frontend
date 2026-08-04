@@ -1,54 +1,3 @@
-export type PageStatus = "published" | "draft";
-
-export type AdminPage = {
-  id: string;
-  titleTh: string;
-  titleEn: string;
-  slug: string;
-  status: PageStatus;
-  seo: number;
-  sectionsCount: number;
-};
-
-export const adminPages: AdminPage[] = [
-  { id: "pg1", titleTh: "หน้าแรก", titleEn: "Home", slug: "home", status: "published", seo: 34, sectionsCount: 5 },
-  { id: "pg2", titleTh: "เกี่ยวกับ", titleEn: "About", slug: "about", status: "published", seo: 31, sectionsCount: 5 },
-  { id: "pg3", titleTh: "ติดต่อ", titleEn: "Contact", slug: "contact", status: "published", seo: 31, sectionsCount: 1 },
-  { id: "pg4", titleTh: "บทความ", titleEn: "Article", slug: "article", status: "published", seo: 31, sectionsCount: 0 },
-  { id: "pg5", titleTh: "อาคาร BFS", titleEn: "BFS Building", slug: "bfs", status: "published", seo: 44, sectionsCount: 0 },
-  {
-    id: "pg6",
-    titleTh: "อาคาร CENTER LAB BUILDING",
-    titleEn: "Tablet Building",
-    slug: "center_lab_building",
-    status: "published",
-    seo: 55,
-    sectionsCount: 0,
-  },
-  {
-    id: "pg7",
-    titleTh: "อาคาร OSD BUILDING",
-    titleEn: "R&D Building",
-    slug: "OSD_building",
-    status: "published",
-    seo: 55,
-    sectionsCount: 0,
-  },
-  {
-    id: "pg8",
-    titleTh: "อาคาร Automated Warehouse",
-    titleEn: "Automated Warehouse",
-    slug: "automated_warehouse",
-    status: "published",
-    seo: 55,
-    sectionsCount: 0,
-  },
-  { id: "pg9", titleTh: "มาตรฐานผู้ผลิต", titleEn: "Standards", slug: "standards", status: "published", seo: 28, sectionsCount: 0 },
-  { id: "pg10", titleTh: "สินค้า", titleEn: "Products", slug: "products", status: "published", seo: 33, sectionsCount: 0 },
-  { id: "pg11", titleTh: "ข่าวสาร", titleEn: "News", slug: "news", status: "published", seo: 29, sectionsCount: 0 },
-  { id: "pg12", titleTh: "โปรโมชั่นฤดูร้อน", titleEn: "Summer Promotion", slug: "summer-promo", status: "draft", seo: 12, sectionsCount: 0 },
-];
-
 export type SectionType = "hero-banners" | "cta-bar" | "company-intro" | "latest-news" | "articles";
 
 export type DeviceVisibility = {
@@ -70,6 +19,7 @@ export type PageSection = {
   matchedCount?: number;
 };
 
+// Seed data for the "home" page — the only page-builder page today.
 export const homeSections: PageSection[] = [
   {
     id: "sec1",
@@ -123,7 +73,3 @@ export const homeSections: PageSection[] = [
     matchedCount: 36,
   },
 ];
-
-export const pageSectionsBySlug: Record<string, PageSection[]> = {
-  home: homeSections,
-};

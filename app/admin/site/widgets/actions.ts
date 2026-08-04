@@ -12,7 +12,7 @@ export async function saveWidgets(widgets: Widget[]) {
     widgets.map((widget) =>
       prisma.widget.update({
         where: { id: widget.id },
-        data: { enabled: widget.enabled },
+        data: { enabled: widget.enabled, link: widget.link || null },
       })
     )
   );

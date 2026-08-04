@@ -5,10 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X, ChevronDown } from "@/components/ui/icons";
-import { navLinks } from "@/data/nav";
+import type { NavLink } from "@/data/nav";
 import { cn } from "@/lib/utils";
 
-export function MobileNav() {
+export function MobileNav({ navLinks }: { navLinks: NavLink[] }) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const pathname = usePathname();

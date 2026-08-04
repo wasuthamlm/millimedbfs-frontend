@@ -47,7 +47,7 @@ export const adminNavItems: AdminNavItem[] = [
     children: [
       { label: "จัดการ Header", href: "/admin/site/header" },
       { label: "จัดการ Banners", href: "/admin/site/banners" },
-      { label: "จัดการหน้าเว็บ", href: "/admin/pages" },
+      { label: "จัดการหน้าเว็บ (หน้าแรก)", href: "/admin/pages" },
       { label: "จัดการ Popup", href: "/admin/site/popup" },
       { label: "จัดการ Footer", href: "/admin/site/footer" },
       { label: "จัดการ Widgets", href: "/admin/site/widgets" },

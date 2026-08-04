@@ -13,9 +13,11 @@ export default async function AdminWidgetsPage() {
 
   const initialWidgets: Widget[] = rows.map((row) => ({
     id: row.id,
+    key: row.key,
     name: row.name,
     description: row.description ?? "",
     enabled: row.enabled,
+    link: row.link ?? "",
   }));
 
   return (

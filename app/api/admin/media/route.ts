@@ -1,8 +1,8 @@
-import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
+import { uploadToStorage } from "@/lib/supabase-storage";
 
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"]);
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -31,13 +31,15 @@ export async function POST(request: Request) {
 
   const ext = path.extname(file.name) || `.${file.type.split("/")[1]}`;
   const filename = `${crypto.randomUUID()}${ext}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadDir, { recursive: true });
-
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(uploadDir, filename), buffer);
 
-  const url = `/uploads/${filename}`;
+  let url: string;
+  try {
+    url = await uploadToStorage(filename, buffer, file.type);
+  } catch {
+    return NextResponse.json({ error: "อัปโหลดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" }, { status: 500 });
+  }
+
   const media = await prisma.media.create({
     data: { url, filename: file.name, mimeType: file.type, size: file.size },
   });

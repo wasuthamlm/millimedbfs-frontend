@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { EyeIcon } from "@/components/ui/admin-icons";
 import { SaveButton } from "@/components/admin/SaveButton";
-import type { AdminPage, PageSection } from "@/data/admin-pages";
+import type { PageSection } from "@/data/admin-pages";
 import type { ArticleView, NewsView } from "@/lib/post-view";
+import type { NavLink } from "@/data/nav";
+import type { FooterColumnData, FooterContactData } from "@/components/layout/Footer";
 import { SectionRow } from "./SectionRow";
 import { PreviewModal } from "./PreviewModal";
 import { saveSections } from "@/app/admin/pages/[slug]/actions";
@@ -16,13 +18,19 @@ export function PageEditor({
   newsCount,
   previewArticles,
   previewNews,
+  navLinks,
+  footerColumns,
+  footerContact,
 }: {
-  page: AdminPage;
+  page: { slug: string; titleTh: string };
   initialSections: PageSection[];
   articleCount: number;
   newsCount: number;
   previewArticles: ArticleView[];
   previewNews: NewsView[];
+  navLinks: NavLink[];
+  footerColumns: FooterColumnData[];
+  footerContact: FooterContactData | null;
 }) {
   const [sections, setSections] = useState(initialSections);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -104,6 +112,9 @@ export function PageEditor({
           onClose={() => setPreviewOpen(false)}
           previewArticles={previewArticles}
           previewNews={previewNews}
+          navLinks={navLinks}
+          footerColumns={footerColumns}
+          footerContact={footerContact}
         />
       )}
     </div>

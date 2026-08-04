@@ -11,7 +11,7 @@ import { footerColumns, footerContact } from "../data/admin-footer";
 import { banners } from "../data/admin-banners";
 import { popupConfig } from "../data/admin-popup";
 import { widgets } from "../data/admin-widgets";
-import { adminPages, pageSectionsBySlug } from "../data/admin-pages";
+import { homeSections } from "../data/admin-pages";
 
 type SeedArticle = { slug: string; title: string; image: string; publishedAt: string; category?: string };
 type SeedNewsItem = {
@@ -132,14 +132,6 @@ async function getOrCreateMedia(url: string, filename: string) {
   });
 }
 
-function slugifyKey(name: string) {
-  return name
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "") || `widget-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 const SECTION_TYPE_MAP: Record<string, PrismaSectionType> = {
   "hero-banners": "HERO_BANNERS",
   "cta-bar": "CTA_BAR",
@@ -163,6 +155,7 @@ async function seedAdminUser() {
 }
 
 async function seedNavLinks() {
+  if (await prisma.navLink.count() > 0) return;
   for (let i = 0; i < navLinks.length; i++) {
     const link = navLinks[i];
     const parent = await prisma.navLink.create({
@@ -186,16 +179,18 @@ async function seedNavLinks() {
 }
 
 async function seedFooter() {
-  for (let i = 0; i < footerColumns.length; i++) {
-    const col = footerColumns[i];
-    const created = await prisma.footerColumn.create({
-      data: { title: col.title, order: i },
-    });
-    for (let j = 0; j < col.links.length; j++) {
-      const link = col.links[j];
-      await prisma.footerLink.create({
-        data: { columnId: created.id, label: link.label, href: link.href, order: j },
+  if ((await prisma.footerColumn.count()) === 0) {
+    for (let i = 0; i < footerColumns.length; i++) {
+      const col = footerColumns[i];
+      const created = await prisma.footerColumn.create({
+        data: { title: col.title, order: i },
       });
+      for (let j = 0; j < col.links.length; j++) {
+        const link = col.links[j];
+        await prisma.footerLink.create({
+          data: { columnId: created.id, label: link.label, href: link.href, order: j },
+        });
+      }
     }
   }
 
@@ -207,6 +202,7 @@ async function seedFooter() {
 }
 
 async function seedBanners() {
+  if (await prisma.banner.count() > 0) return;
   for (let i = 0; i < banners.length; i++) {
     const banner = banners[i];
     const media = await getOrCreateMedia(banner.image, banner.image.split("/").pop() ?? "banner.svg");
@@ -245,11 +241,15 @@ async function seedPopup() {
 
 async function seedWidgets() {
   for (const widget of widgets) {
-    const key = slugifyKey(widget.name);
     await prisma.widget.upsert({
-      where: { key },
+      where: { key: widget.key },
       update: {},
-      create: { key, name: widget.name, description: widget.description, enabled: widget.enabled },
+      create: {
+        key: widget.key,
+        name: widget.name,
+        description: widget.description,
+        enabled: widget.enabled,
+      },
     });
   }
 }
@@ -307,39 +307,34 @@ async function seedProducts() {
 }
 
 async function seedPages() {
-  for (const page of adminPages) {
-    const created = await prisma.page.upsert({
-      where: { slug: page.slug },
-      update: {},
-      create: {
-        slug: page.slug,
-        titleTh: page.titleTh,
-        titleEn: page.titleEn,
-        status: page.status === "published" ? "PUBLISHED" : "DRAFT",
+  // Only "home" is a real page-builder page today — the public site has no
+  // other routes composed from Page/PageSection, so no other Page rows are
+  // seeded here (avoid seeding placeholder pages with no real use yet).
+  const created = await prisma.page.upsert({
+    where: { slug: "home" },
+    update: {},
+    create: { slug: "home", titleTh: "หน้าแรก", titleEn: "Home", status: "PUBLISHED" },
+  });
+
+  if ((await prisma.pageSection.count({ where: { pageId: created.id } })) > 0) return;
+
+  for (const section of homeSections) {
+    const type = SECTION_TYPE_MAP[section.type] ?? "CUSTOM";
+    await prisma.pageSection.create({
+      data: {
+        pageId: created.id,
+        order: section.order,
+        type,
+        titleTh: section.titleTh,
+        titleEn: section.titleEn,
+        visibleDesktop: section.visibility.desktop,
+        visibleTablet: section.visibility.tablet,
+        visibleMobile: section.visibility.mobile,
+        columns: section.columns,
+        itemsToShow: section.itemsToShow,
+        config: { sourceLabel: section.sourceLabel },
       },
     });
-
-    const sections = pageSectionsBySlug[page.slug];
-    if (!sections) continue;
-
-    for (const section of sections) {
-      const type = SECTION_TYPE_MAP[section.type] ?? "CUSTOM";
-      await prisma.pageSection.create({
-        data: {
-          pageId: created.id,
-          order: section.order,
-          type,
-          titleTh: section.titleTh,
-          titleEn: section.titleEn,
-          visibleDesktop: section.visibility.desktop,
-          visibleTablet: section.visibility.tablet,
-          visibleMobile: section.visibility.mobile,
-          columns: section.columns,
-          itemsToShow: section.itemsToShow,
-          config: { sourceLabel: section.sourceLabel },
-        },
-      });
-    }
   }
 }
 

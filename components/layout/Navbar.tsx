@@ -3,13 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { navLinks } from "@/data/nav";
+import type { NavLink } from "@/data/nav";
 import { cn } from "@/lib/utils";
-import { LanguageSwitcher } from "./LanguageSwitcher";
 import { NavDropdown } from "./NavDropdown";
 import { MobileNav } from "./MobileNav";
 
-export function Navbar() {
+export function Navbar({ navLinks }: { navLinks: NavLink[] }) {
   const pathname = usePathname();
 
   return (
@@ -44,10 +43,7 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:block">
-            <LanguageSwitcher />
-          </div>
-          <MobileNav />
+          <MobileNav navLinks={navLinks} />
         </div>
       </div>
     </header>

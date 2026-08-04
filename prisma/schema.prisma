@@ -254,6 +254,7 @@ model Widget {
   name        String
   description String?
   enabled     Boolean @default(false)
+  link        String?
 }
 
 // ───────────────────────── New entities: contact + media ─────────────────────────

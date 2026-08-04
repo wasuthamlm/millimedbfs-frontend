@@ -24,7 +24,6 @@ function findActiveParent(pathname: string | null) {
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [lang, setLang] = useState<"th" | "en">("th");
   const [openMenu, setOpenMenu] = useState<string | null>(() => findActiveParent(pathname) ?? null);
 
   // Re-sync which submenu is open whenever the active route's section changes,
@@ -70,33 +69,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <PanelLeftIcon className="h-5 w-5" />
           </button>
         </div>
-
-        {!collapsed && (
-          <div className="flex items-center gap-2 px-5 py-3">
-            <button
-              type="button"
-              onClick={() => setLang("th")}
-              aria-pressed={lang === "th"}
-              className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-lg text-lg",
-                lang === "th" ? "bg-white/15 ring-1 ring-white/30" : "opacity-60 hover:opacity-100"
-              )}
-            >
-              🇹🇭
-            </button>
-            <button
-              type="button"
-              onClick={() => setLang("en")}
-              aria-pressed={lang === "en"}
-              className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-lg text-lg",
-                lang === "en" ? "bg-white/15 ring-1 ring-white/30" : "opacity-60 hover:opacity-100"
-              )}
-            >
-              🇬🇧
-            </button>
-          </div>
-        )}
 
         <nav className="flex-1 overflow-y-auto px-3 py-2">
           <ul className="flex flex-col gap-1">

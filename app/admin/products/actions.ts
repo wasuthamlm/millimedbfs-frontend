@@ -23,6 +23,7 @@ export type ProductActionResult = { error: string } | { error?: undefined; id: s
 function revalidateAll() {
   revalidatePath("/admin/products");
   revalidatePath("/admin");
+  revalidatePath("/products");
 }
 
 async function resolveImageId(imageUrl?: string) {
