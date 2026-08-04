@@ -4,8 +4,6 @@ import { NewsCard } from "@/components/news/NewsCard";
 import { prisma } from "@/lib/prisma";
 import { toNewsView } from "@/lib/post-view";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "ข่าวสาร",
   description: "ข่าวสารและกิจกรรมล่าสุดจาก Millimed BFS",

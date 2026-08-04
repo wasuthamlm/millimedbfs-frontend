@@ -4,8 +4,6 @@ import { ArticleCard } from "@/components/articles/ArticleCard";
 import { prisma } from "@/lib/prisma";
 import { toArticleView } from "@/lib/post-view";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "บทความ",
   description: "บทความน่ารู้ด้านสุขภาพและความงามจาก Millimed BFS",

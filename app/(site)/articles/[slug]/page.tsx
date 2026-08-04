@@ -6,8 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { toArticleView } from "@/lib/post-view";
 import { formatThaiDate } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
-
 async function getArticle(slug: string) {
   const post = await prisma.post.findUnique({
     where: { slug },
@@ -15,6 +13,14 @@ async function getArticle(slug: string) {
   });
   if (!post || post.kind !== "ARTICLE" || post.status !== "PUBLISHED") return null;
   return post;
+}
+
+export async function generateStaticParams() {
+  const posts = await prisma.post.findMany({
+    where: { kind: "ARTICLE", status: "PUBLISHED" },
+    select: { slug: true },
+  });
+  return posts.map((post) => ({ slug: post.slug }));
 }
 
 export async function generateMetadata({

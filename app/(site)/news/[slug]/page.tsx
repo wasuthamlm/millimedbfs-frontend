@@ -6,8 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { toNewsView } from "@/lib/post-view";
 import { formatThaiDate } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
-
 async function getNewsPost(slug: string) {
   const post = await prisma.post.findUnique({
     where: { slug },
@@ -15,6 +13,14 @@ async function getNewsPost(slug: string) {
   });
   if (!post || post.kind !== "NEWS" || post.status !== "PUBLISHED") return null;
   return post;
+}
+
+export async function generateStaticParams() {
+  const posts = await prisma.post.findMany({
+    where: { kind: "NEWS", status: "PUBLISHED" },
+    select: { slug: true },
+  });
+  return posts.map((post) => ({ slug: post.slug }));
 }
 
 export async function generateMetadata({

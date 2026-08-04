@@ -3,8 +3,6 @@ import { ArticlesGrid } from "@/components/home/ArticlesGrid";
 import { prisma } from "@/lib/prisma";
 import { toArticleView, toNewsView } from "@/lib/post-view";
 
-export const dynamic = "force-dynamic";
-
 export default async function Home() {
   const page = await prisma.page.findUnique({
     where: { slug: "home" },
