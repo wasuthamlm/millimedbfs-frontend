@@ -45,19 +45,11 @@ export function BannersManager({ initialBanners }: { initialBanners: Banner[] })
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={add}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-navy px-4 py-2 text-sm font-medium text-white hover:bg-brand-navy-dark"
-        >
-          <PlusIcon className="h-4 w-4" />
-          เพิ่ม Banner ใหม่
-        </button>
-      </div>
+      <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+        <h2 className="mb-4 text-sm font-semibold text-slate-900">รายการแบนเนอร์</h2>
 
-      <div className="flex flex-col gap-4">
-        {banners.map((banner, index) => (
+        <div className="flex flex-col gap-4">
+          {banners.map((banner, index) => (
           <div
             key={banner.id}
             className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:flex-row"
@@ -126,7 +118,17 @@ export function BannersManager({ initialBanners }: { initialBanners: Banner[] })
               </div>
             </div>
           </div>
-        ))}
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={add}
+          className="mt-4 flex w-full items-center justify-center rounded-lg border border-dashed border-slate-300 py-3 text-sm font-medium text-brand-navy transition-colors hover:bg-slate-50"
+        >
+          <PlusIcon className="mr-1.5 h-4 w-4" />
+          Add Banner
+        </button>
       </div>
 
       <div className="flex justify-end">

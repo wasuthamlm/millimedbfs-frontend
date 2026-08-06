@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth";
 
-const ADMIN_ROLES = new Set(["ADMIN", "EDITOR"]);
+const ADMIN_ROLES = new Set(["ADMIN", "APPROVER", "CONTRIBUTOR"]);
 
-/** Call at the top of every admin-facing Server Action. Throws if the caller isn't an authenticated admin/editor. */
+/** Call at the top of every admin-facing Server Action. Throws if the caller isn't an authenticated admin/approver/contributor. */
 export async function requireAdmin() {
   const session = await auth();
   const role = session?.user?.role;

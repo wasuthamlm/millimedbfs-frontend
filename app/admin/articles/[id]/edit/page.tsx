@@ -8,7 +8,14 @@ export const dynamic = "force-dynamic";
 
 export default async function EditArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const post = await prisma.post.findUnique({ where: { id }, include: { coverImage: true } });
+  const [post, categories] = await Promise.all([
+    prisma.post.findUnique({ where: { id }, include: { coverImage: true } }),
+    prisma.articleCategory.findMany({
+      where: { active: true },
+      orderBy: [{ order: "asc" }, { nameTh: "asc" }],
+      select: { id: true, nameTh: true },
+    }),
+  ]);
   if (!post) notFound();
 
   const initialPost: InitialPost = {
@@ -22,7 +29,7 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
     excerptEn: post.excerptEn ?? "",
     bodyTh: post.bodyTh ?? "",
     bodyEn: post.bodyEn ?? "",
-    category: post.category ?? "",
+    categoryId: post.categoryId ?? "",
     featured: post.featured,
     coverImageUrl: post.coverImage?.url ?? "",
   };
@@ -30,7 +37,7 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
   return (
     <div className="flex flex-col gap-6">
       <PageHeader icon={FileTextIcon} title="แก้ไขบทความ" subtitle={post.titleTh} />
-      <PostForm initialPost={initialPost} />
+      <PostForm initialPost={initialPost} categories={categories} />
     </div>
   );
 }

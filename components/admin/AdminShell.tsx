@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { signOut } from "next-auth/react";
 import { adminNavItems } from "@/data/admin-nav";
 import { PanelLeftIcon, LogOutIcon, GlobeIcon } from "@/components/ui/admin-icons";
-import { ChevronDown } from "@/components/ui/icons";
+import { ChevronDown, Menu, X } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 
 function isChildActive(pathname: string | null, href: string) {
@@ -24,12 +24,15 @@ function findActiveParent(pathname: string | null) {
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(() => findActiveParent(pathname) ?? null);
 
   // Re-sync which submenu is open whenever the active route's section changes,
-  // so navigating into a different section auto-expands it (single accordion).
+  // so navigating into a different section auto-expands it (single accordion),
+  // and close the mobile drawer so it doesn't stay open after navigating.
   useEffect(() => {
     setOpenMenu(findActiveParent(pathname) ?? null);
+    setMobileOpen(false);
   }, [pathname]);
 
   const toggleMenu = (href: string) => {
@@ -42,10 +45,18 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 flex flex-col overflow-hidden bg-brand-navy text-white/90 transition-[width] duration-200 ease-out will-change-[width]",
-          collapsed ? "w-20" : "w-72"
+          "fixed inset-y-0 left-0 z-40 flex w-72 flex-col overflow-hidden bg-brand-navy text-white/90 transition-transform duration-200 ease-out lg:z-30 lg:translate-x-0 lg:transition-[width] lg:will-change-[width]",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+          collapsed ? "lg:w-20" : "lg:w-72"
         )}
       >
         <div className="flex items-center justify-between gap-2 border-b border-white/10 px-5 py-4">
@@ -64,9 +75,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             type="button"
             aria-label="ย่อ/ขยายเมนู"
             onClick={() => setCollapsed((v) => !v)}
-            className="shrink-0 rounded-md p-1.5 text-white/60 hover:bg-white/10 hover:text-white"
+            className="hidden shrink-0 rounded-md p-1.5 text-white/60 hover:bg-white/10 hover:text-white lg:block"
           >
             <PanelLeftIcon className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            aria-label="ปิดเมนู"
+            onClick={() => setMobileOpen(false)}
+            className="shrink-0 rounded-md p-1.5 text-white/60 hover:bg-white/10 hover:text-white lg:hidden"
+          >
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -182,9 +201,20 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <div
         className={cn(
           "min-h-screen transition-[padding-left] duration-200 ease-out",
-          collapsed ? "pl-20" : "pl-72"
+          collapsed ? "lg:pl-20" : "lg:pl-72"
         )}
       >
+        <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
+          <button
+            type="button"
+            aria-label="เปิดเมนู"
+            onClick={() => setMobileOpen(true)}
+            className="rounded-md p-2 text-slate-700 hover:bg-slate-100"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <span className="text-sm font-semibold text-brand-navy">มิลลิเมด บีเอฟเอส Admin</span>
+        </div>
         <div className="px-6 py-6 sm:px-10 sm:py-8">{children}</div>
       </div>
     </div>

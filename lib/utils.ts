@@ -9,3 +9,11 @@ export function formatThaiDate(iso: string) {
     day: "numeric",
   });
 }
+
+export function formatCurrencyTHB(amount: number) {
+  return new Intl.NumberFormat("th-TH", {
+    style: "currency",
+    currency: "THB",
+    maximumFractionDigits: 2,
+  }).format(amount);
+}

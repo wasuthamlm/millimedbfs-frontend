@@ -24,10 +24,12 @@ export type InitialPost = {
   excerptEn: string;
   bodyTh: string;
   bodyEn: string;
-  category: string;
+  categoryId: string;
   featured: boolean;
   coverImageUrl: string;
 };
+
+export type ArticleCategoryOption = { id: string; nameTh: string };
 
 const EMPTY_POST: InitialPost = {
   id: "",
@@ -40,7 +42,7 @@ const EMPTY_POST: InitialPost = {
   excerptEn: "",
   bodyTh: "",
   bodyEn: "",
-  category: "",
+  categoryId: "",
   featured: false,
   coverImageUrl: "",
 };
@@ -49,7 +51,13 @@ const inputClass =
   "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy";
 const labelClass = "mb-1 block text-sm font-medium text-slate-700";
 
-export function PostForm({ initialPost }: { initialPost?: InitialPost }) {
+export function PostForm({
+  initialPost,
+  categories = [],
+}: {
+  initialPost?: InitialPost;
+  categories?: ArticleCategoryOption[];
+}) {
   const router = useRouter();
   const isEdit = Boolean(initialPost?.id);
   const [form, setForm] = useState<InitialPost>(initialPost ?? EMPTY_POST);
@@ -79,7 +87,7 @@ export function PostForm({ initialPost }: { initialPost?: InitialPost }) {
       excerptEn: form.excerptEn,
       bodyTh: form.bodyTh,
       bodyEn: form.bodyEn,
-      category: form.category,
+      categoryId: form.categoryId,
       featured: form.featured,
       coverImageUrl: form.coverImageUrl,
     };
@@ -171,11 +179,18 @@ export function PostForm({ initialPost }: { initialPost?: InitialPost }) {
 
         <div>
           <label className={labelClass}>หมวดหมู่</label>
-          <input
+          <select
             className={inputClass}
-            value={form.category}
-            onChange={(e) => update("category", e.target.value)}
-          />
+            value={form.categoryId}
+            onChange={(e) => update("categoryId", e.target.value)}
+          >
+            <option value="">— ไม่ระบุ —</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nameTh}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex items-end pb-2">

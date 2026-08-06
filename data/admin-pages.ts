@@ -17,6 +17,9 @@ export type PageSection = {
   columns?: number;
   itemsToShow?: number;
   matchedCount?: number;
+  anchorId?: string;
+  bodyTh?: string;
+  imageUrl?: string;
 };
 
 // Seed data for the "home" page — the only page-builder page today.

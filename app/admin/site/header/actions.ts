@@ -3,34 +3,42 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/require-admin";
-import type { NavLink } from "@/data/nav";
 
-export async function saveNavLinks(links: NavLink[]) {
+export type HeaderConfigInput = {
+  layout: string;
+  height: string;
+  shadow: string;
+  position: string;
+  bgColor: string;
+  textColor: string;
+  hoverBgColor: string;
+  hoverTextColor: string;
+  activeBgColor: string;
+  activeTextColor: string;
+  iconTextColor: string;
+  logoMode: string;
+  logoTextTh: string;
+  logoTextEn: string;
+  menuWrap: string;
+  menuFontSize: string;
+  menuLevels: number;
+  submenuStyle: string;
+  submenuChildBehavior: string;
+  showSearch: boolean;
+  showLanguage: boolean;
+  showAccount: boolean;
+  showCart: boolean;
+};
+
+export async function saveHeaderConfig(input: HeaderConfigInput) {
   await requireAdmin();
 
-  await prisma.$transaction(async (tx) => {
-    await tx.navLink.deleteMany({ where: { placement: "HEADER" } });
+  const data = { ...input, logoTextTh: input.logoTextTh || null, logoTextEn: input.logoTextEn || null };
 
-    for (let i = 0; i < links.length; i++) {
-      const link = links[i];
-      const parent = await tx.navLink.create({
-        data: { labelTh: link.label, href: link.href, order: i, placement: "HEADER" },
-      });
-      if (link.children) {
-        for (let j = 0; j < link.children.length; j++) {
-          const child = link.children[j];
-          await tx.navLink.create({
-            data: {
-              labelTh: child.label,
-              href: child.href,
-              order: j,
-              placement: "HEADER",
-              parentId: parent.id,
-            },
-          });
-        }
-      }
-    }
+  await prisma.siteHeaderConfig.upsert({
+    where: { id: "singleton" },
+    update: data,
+    create: { id: "singleton", ...data },
   });
 
   revalidatePath("/admin/site/header");

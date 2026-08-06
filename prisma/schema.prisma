@@ -14,16 +14,18 @@ datasource db {
 
 enum Role {
   ADMIN
-  EDITOR
+  APPROVER
+  CONTRIBUTOR
   CUSTOMER
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String    @id @default(uuid())
   email         String    @unique
   passwordHash  String?
   name          String?
   role          Role      @default(CUSTOMER)
+  disabled      Boolean   @default(false)
   emailVerified DateTime?
   image         String?
   createdAt     DateTime  @default(now())
@@ -31,12 +33,12 @@ model User {
 
   accounts     Account[]
   sessions     Session[]
-  posts        Post[]  @relation("PostAuthor")
+  posts        Post[]    @relation("PostAuthor")
   mediaUploads Media[]
 }
 
 model Account {
-  id                String  @id @default(cuid())
+  id                String  @id @default(uuid())
   userId            String
   type              String
   provider          String
@@ -55,7 +57,7 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid())
   sessionToken String   @unique
   userId       String
   expires      DateTime
@@ -84,25 +86,27 @@ enum PostStatus {
 }
 
 model Post {
-  id           String     @id @default(cuid())
-  slug         String     @unique
-  kind         PostKind
-  status       PostStatus @default(DRAFT)
-  titleTh      String
-  titleEn      String?
-  excerptTh    String?
-  excerptEn    String?
-  bodyTh       String?
-  bodyEn       String?
-  coverImageId String?
-  coverImage   Media?     @relation(fields: [coverImageId], references: [id])
-  category     String?
-  featured     Boolean    @default(false)
-  publishedAt  DateTime?
-  authorId     String?
-  author       User?      @relation("PostAuthor", fields: [authorId], references: [id])
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id              String           @id @default(uuid())
+  slug            String           @unique
+  kind            PostKind
+  status          PostStatus       @default(DRAFT)
+  titleTh         String
+  titleEn         String?
+  excerptTh       String?
+  excerptEn       String?
+  bodyTh          String?
+  bodyEn          String?
+  coverImageId    String?
+  coverImage      Media?           @relation(fields: [coverImageId], references: [id])
+  category        String?
+  categoryId      String?
+  articleCategory ArticleCategory? @relation(fields: [categoryId], references: [id])
+  featured        Boolean          @default(false)
+  publishedAt     DateTime?
+  authorId        String?
+  author          User?            @relation("PostAuthor", fields: [authorId], references: [id])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([kind, status, publishedAt])
 }
@@ -116,17 +120,45 @@ enum ProductStatus {
 }
 
 model Product {
-  id            String        @id @default(cuid())
-  sku           String        @unique
+  id            String           @id @default(uuid())
+  sku           String           @unique
   nameTh        String
   nameEn        String?
   descriptionTh String?
   descriptionEn String?
-  status        ProductStatus @default(DRAFT)
+  status        ProductStatus    @default(DRAFT)
+  price         Float?
+  featured      Boolean          @default(false)
+  bestSeller    Boolean          @default(false)
   imageId       String?
-  image         Media?        @relation(fields: [imageId], references: [id])
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  image         Media?           @relation(fields: [imageId], references: [id])
+  categoryId    String?
+  category      ProductCategory? @relation(fields: [categoryId], references: [id])
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+model ProductCategory {
+  id       String            @id @default(uuid())
+  nameTh   String
+  nameEn   String?
+  slug     String            @unique
+  order    Int               @default(0)
+  active   Boolean           @default(true)
+  parentId String?
+  parent   ProductCategory?  @relation("ProductCategoryChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children ProductCategory[] @relation("ProductCategoryChildren")
+  products Product[]
+}
+
+model ArticleCategory {
+  id     String  @id @default(uuid())
+  nameTh String
+  nameEn String?
+  slug   String  @unique
+  order  Int     @default(0)
+  active Boolean @default(true)
+  posts  Post[]
 }
 
 // ───────────────────────── Pages / page builder ─────────────────────────
@@ -137,13 +169,14 @@ enum PageStatus {
 }
 
 model Page {
-  id       String        @id @default(cuid())
-  slug     String        @unique
+  id       String     @id @default(uuid())
+  slug     String     @unique
   titleTh  String
   titleEn  String?
-  status   PageStatus    @default(DRAFT)
+  status   PageStatus @default(DRAFT)
   seoTitle String?
   seoDesc  String?
+  archived Boolean    @default(false)
 
   sections  PageSection[]
   createdAt DateTime      @default(now())
@@ -160,7 +193,7 @@ enum SectionType {
 }
 
 model PageSection {
-  id             String      @id @default(cuid())
+  id             String      @id @default(uuid())
   pageId         String
   page           Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
   order          Int
@@ -186,11 +219,12 @@ enum NavPlacement {
 }
 
 model NavLink {
-  id        String       @id @default(cuid())
+  id        String       @id @default(uuid())
   labelTh   String
   labelEn   String?
   href      String
   order     Int
+  active    Boolean      @default(true)
   placement NavPlacement @default(HEADER)
 
   parentId String?
@@ -201,7 +235,7 @@ model NavLink {
 // ───────────────────────── Site chrome: banners / footer / popup / widgets ─────────────────────────
 
 model Banner {
-  id      String  @id @default(cuid())
+  id      String  @id @default(uuid())
   titleTh String
   imageId String?
   image   Media?  @relation(fields: [imageId], references: [id])
@@ -211,14 +245,14 @@ model Banner {
 }
 
 model FooterColumn {
-  id    String       @id @default(cuid())
+  id    String       @id @default(uuid())
   title String
   order Int
   links FooterLink[]
 }
 
 model FooterLink {
-  id       String       @id @default(cuid())
+  id       String       @id @default(uuid())
   columnId String
   column   FooterColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
   label    String
@@ -228,16 +262,35 @@ model FooterLink {
 
 // Singleton row (id = "singleton")
 model FooterContact {
-  id      String  @id @default(cuid())
-  phone   String?
-  email   String?
-  address String?
-  tagline String?
+  id                 String  @id @default(uuid())
+  phone              String?
+  email              String?
+  address            String? // Thai address (kept as `address` for backward compat with Footer.tsx)
+  addressEn          String?
+  tagline            String? // Thai tagline (kept as `tagline` for backward compat with PromoBar)
+  taglineEn          String?
+  companyNameTh      String?
+  companyNameEn      String?
+  taxId              String?
+  lineId             String?
+  googleMapsEmbedUrl String?
+}
+
+// Singleton row (id = "singleton")
+model FooterConfig {
+  id             String   @id @default(uuid())
+  bgColor        String   @default("#032f87")
+  textColor      String   @default("#ffffff")
+  accentColor    String   @default("#fed22f")
+  desktopColumns Int      @default(3)
+  copyrightTh    String?
+  copyrightEn    String?
+  updatedAt      DateTime @updatedAt
 }
 
 // Singleton row (id = "singleton")
 model PopupConfig {
-  id        String    @id @default(cuid())
+  id        String    @id @default(uuid())
   enabled   Boolean   @default(false)
   titleTh   String?
   imageId   String?
@@ -249,12 +302,56 @@ model PopupConfig {
 }
 
 model Widget {
-  id          String  @id @default(cuid())
+  id          String  @id @default(uuid())
   key         String  @unique
   name        String
   description String?
   enabled     Boolean @default(false)
   link        String?
+}
+
+// Singleton row (id = "singleton")
+model SiteHeaderConfig {
+  id                   String   @id @default(uuid())
+  layout               String   @default("logo-left-menu-center")
+  height               String   @default("standard")
+  shadow               String   @default("strong")
+  position             String   @default("fixed-top")
+  bgColor              String   @default("#032f87")
+  textColor            String   @default("#ffffff")
+  hoverBgColor         String   @default("#fed22f")
+  hoverTextColor       String   @default("#000000")
+  activeBgColor        String   @default("#fed22f")
+  activeTextColor      String   @default("#000000")
+  iconTextColor        String   @default("#fed22f")
+  logoMode             String   @default("site-settings")
+  logoTextTh           String?
+  logoTextEn           String?
+  menuWrap             String   @default("single-line")
+  menuFontSize         String   @default("normal")
+  menuLevels           Int      @default(2)
+  submenuStyle         String   @default("click-open")
+  submenuChildBehavior String   @default("below-parent")
+  showSearch           Boolean  @default(false)
+  showLanguage         Boolean  @default(true)
+  showAccount          Boolean  @default(false)
+  showCart             Boolean  @default(false)
+  updatedAt            DateTime @updatedAt
+}
+
+// Singleton row (id = "singleton")
+model SiteBannerConfig {
+  id                String   @id @default(uuid())
+  transitionEffect  String   @default("fade")
+  direction         String   @default("ltr")
+  transitionSpeedMs Int      @default(700)
+  displayDurationMs Int      @default(5000)
+  autoplay          Boolean  @default(true)
+  loop              Boolean  @default(true)
+  pauseOnHover      Boolean  @default(true)
+  showArrows        Boolean  @default(true)
+  showDots          Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
 }
 
 // ───────────────────────── New entities: contact + media ─────────────────────────
@@ -266,7 +363,7 @@ enum MessageStatus {
 }
 
 model ContactMessage {
-  id        String        @id @default(cuid())
+  id        String        @id @default(uuid())
   name      String
   email     String
   phone     String?
@@ -277,7 +374,7 @@ model ContactMessage {
 }
 
 model Media {
-  id           String   @id @default(cuid())
+  id           String       @id @default(uuid())
   url          String
   filename     String
   mimeType     String
@@ -285,11 +382,107 @@ model Media {
   width        Int?
   height       Int?
   uploadedById String?
-  uploadedBy   User?    @relation(fields: [uploadedById], references: [id])
-  createdAt    DateTime @default(now())
+  uploadedBy   User?        @relation(fields: [uploadedById], references: [id])
+  folderId     String?
+  folder       MediaFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdAt    DateTime     @default(now())
 
   posts    Post[]
   banners  Banner[]
   products Product[]
   popups   PopupConfig[]
+
+  siteLogoFor SiteSettings[] @relation("SiteSettingsLogo")
+  faviconFor  SiteSettings[] @relation("SiteSettingsFavicon")
+  loginBgFor  SiteSettings[] @relation("SiteSettingsLoginBg")
+}
+
+// Singleton row (id = "singleton") — site identity, contact/legal, analytics, SEO defaults, social, assets
+model SiteSettings {
+  id         String  @id @default(uuid())
+  siteNameTh String?
+  siteNameEn String?
+  siteUrl    String?
+
+  youtubeEmbedUrl String?
+
+  gtmId         String?
+  ga4Id         String?
+  fbPixelId     String?
+  tiktokPixelId String?
+
+  seoMetaTitleTh String?
+  seoMetaDescTh  String?
+
+  facebookUrl        String?
+  instagramUrl       String?
+  youtubeUrl         String?
+  tiktokUrl          String?
+  lineUrl            String?
+  socialIconStyle    String  @default("circle-outline")
+  showSocialInHeader Boolean @default(false)
+
+  siteLogoId String?
+  siteLogo   Media?  @relation("SiteSettingsLogo", fields: [siteLogoId], references: [id])
+  faviconId  String?
+  favicon    Media?  @relation("SiteSettingsFavicon", fields: [faviconId], references: [id])
+  loginBgId  String?
+  loginBg    Media?  @relation("SiteSettingsLoginBg", fields: [loginBgId], references: [id])
+
+  updatedAt DateTime @updatedAt
+}
+
+// Singleton row (id = "singleton") — sitewide fonts / colors / button radius
+model GlobalTheme {
+  id                String   @id @default(uuid())
+  fontHeader        String   @default("Prompt")
+  fontBody          String   @default("Sarabun")
+  colorPrimary      String   @default("#032f87")
+  colorPrimaryHover String   @default("#ffe45c")
+  colorAccent       String   @default("#fed22f")
+  colorBackground   String   @default("#dfedfb")
+  colorText         String   @default("#121212")
+  buttonRadius      String   @default("soft-sm")
+  updatedAt         DateTime @updatedAt
+}
+
+enum AiProvider {
+  OPENAI
+  GEMINI
+}
+
+// Singleton row (id = "singleton") — which AI provider/model the Translation Status page uses
+model AiSettings {
+  id        String     @id @default(uuid())
+  provider  AiProvider @default(GEMINI)
+  model     String?
+  updatedAt DateTime   @updatedAt
+}
+
+model MediaFolder {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  media Media[]
+}
+
+// ───────────────────────── Translations ─────────────────────────
+
+enum TranslatableEntity {
+  ARTICLE
+  PRODUCT
+}
+
+model Translation {
+  id         String             @id @default(uuid())
+  entityType TranslatableEntity
+  entityId   String
+  locale     String
+  field      String
+  value      String
+  updatedAt  DateTime           @updatedAt
+
+  @@unique([entityType, entityId, locale, field])
+  @@index([entityType, locale])
 }

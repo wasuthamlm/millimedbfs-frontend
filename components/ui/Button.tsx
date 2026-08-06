@@ -13,7 +13,7 @@ export function Button({ href, children, variant = "gold", className }: ButtonPr
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold transition-colors",
+        "inline-flex items-center justify-center rounded-[var(--radius-btn,9999px)] px-5 py-2 text-sm font-semibold transition-colors",
         variant === "gold" &&
           "bg-brand-gold text-brand-navy-dark hover:bg-brand-gold-dark",
         variant === "outline" &&

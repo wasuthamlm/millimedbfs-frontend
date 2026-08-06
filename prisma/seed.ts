@@ -121,6 +121,34 @@ const adminProducts: SeedProduct[] = [
   { sku: "MBFS-009", name: "ซันสกรีน เอสพีเอฟ 50", status: "archived" },
 ];
 
+const productCategories = [
+  { slug: "eye-care", nameTh: "ดูแลดวงตา", nameEn: "Eye Care", parentSlug: null as string | null },
+  { slug: "eye-drops", nameTh: "ยาหยอดตา", nameEn: "Eye Drops", parentSlug: "eye-care" },
+  { slug: "eye-gel", nameTh: "เจลบำรุงตา", nameEn: "Eye Gel", parentSlug: "eye-care" },
+  { slug: "skin-care", nameTh: "ดูแลผิว", nameEn: "Skin Care", parentSlug: null },
+  { slug: "cream", nameTh: "ครีม", nameEn: "Cream", parentSlug: "skin-care" },
+  { slug: "serum", nameTh: "เซรั่ม", nameEn: "Serum", parentSlug: "skin-care" },
+  { slug: "general-care", nameTh: "ดูแลทั่วไป", nameEn: "General Care", parentSlug: null },
+];
+
+const productCategoryBySku: Record<string, string> = {
+  "MBFS-001": "eye-drops",
+  "MBFS-002": "eye-drops",
+  "MBFS-005": "eye-drops",
+  "MBFS-006": "eye-gel",
+  "MBFS-003": "cream",
+  "MBFS-007": "serum",
+  "MBFS-008": "skin-care",
+  "MBFS-009": "skin-care",
+  "MBFS-004": "general-care",
+};
+
+const articleCategories = [
+  { slug: "general-health", nameTh: "สุขภาพทั่วไป", nameEn: "General Health" },
+  { slug: "womens-health", nameTh: "สุขภาพผู้หญิง", nameEn: "Women's Health" },
+  { slug: "skin", nameTh: "ผิวพรรณ", nameEn: "Skin" },
+];
+
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
@@ -291,16 +319,61 @@ async function seedPosts() {
   }
 }
 
-async function seedProducts() {
+async function seedProductCategories() {
+  const bySlug = new Map<string, string>();
+
+  const topLevel = productCategories.filter((c) => !c.parentSlug);
+  for (let i = 0; i < topLevel.length; i++) {
+    const cat = topLevel[i];
+    const row = await prisma.productCategory.upsert({
+      where: { slug: cat.slug },
+      update: {},
+      create: { slug: cat.slug, nameTh: cat.nameTh, nameEn: cat.nameEn, order: i },
+    });
+    bySlug.set(cat.slug, row.id);
+  }
+
+  const children = productCategories.filter((c) => c.parentSlug);
+  const orderByParent = new Map<string, number>();
+  for (const cat of children) {
+    const parentId = bySlug.get(cat.parentSlug!);
+    const order = orderByParent.get(cat.parentSlug!) ?? 0;
+    const row = await prisma.productCategory.upsert({
+      where: { slug: cat.slug },
+      update: {},
+      create: { slug: cat.slug, nameTh: cat.nameTh, nameEn: cat.nameEn, order, parentId },
+    });
+    bySlug.set(cat.slug, row.id);
+    orderByParent.set(cat.parentSlug!, order + 1);
+  }
+
+  return bySlug;
+}
+
+async function seedArticleCategories() {
+  for (let i = 0; i < articleCategories.length; i++) {
+    const cat = articleCategories[i];
+    await prisma.articleCategory.upsert({
+      where: { slug: cat.slug },
+      update: {},
+      create: { slug: cat.slug, nameTh: cat.nameTh, nameEn: cat.nameEn, order: i },
+    });
+  }
+}
+
+async function seedProducts(categoryIdBySlug: Map<string, string>) {
   const statusMap = { active: "ACTIVE", draft: "DRAFT", archived: "ARCHIVED" } as const;
   for (const product of adminProducts) {
+    const categorySlug = productCategoryBySku[product.sku];
+    const categoryId = categorySlug ? categoryIdBySlug.get(categorySlug) : undefined;
     await prisma.product.upsert({
       where: { sku: product.sku },
-      update: {},
+      update: { categoryId },
       create: {
         sku: product.sku,
         nameTh: product.name,
         status: statusMap[product.status],
+        categoryId,
       },
     });
   }
@@ -346,7 +419,9 @@ async function main() {
   await seedPopup();
   await seedWidgets();
   await seedPosts();
-  await seedProducts();
+  await seedArticleCategories();
+  const productCategoryIds = await seedProductCategories();
+  await seedProducts(productCategoryIds);
   await seedPages();
   console.log("Seed complete.");
 }

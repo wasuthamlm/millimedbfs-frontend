@@ -44,7 +44,12 @@ export async function saveSections(
           visibleMobile: section.visibility.mobile,
           columns: section.columns,
           itemsToShow: section.itemsToShow,
-          config: { sourceLabel: section.sourceLabel },
+          config: {
+            sourceLabel: section.sourceLabel,
+            anchorId: section.anchorId ?? "",
+            bodyTh: section.bodyTh ?? "",
+            imageUrl: section.imageUrl ?? "",
+          },
         },
       });
     }

@@ -8,6 +8,9 @@ import { ImageIcon, TrashIcon } from "@/components/ui/admin-icons";
 const inputClass =
   "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy";
 
+const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"]);
+const MAX_SIZE = 5 * 1024 * 1024;
+
 export function ImageUploader({
   value,
   onChange,
@@ -23,6 +26,18 @@ export function ImageUploader({
 
   const handleFile = async (file: File) => {
     setError(null);
+
+    if (!ALLOWED_TYPES.has(file.type)) {
+      setError("รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, WEBP, GIF, SVG)");
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+    if (file.size > MAX_SIZE) {
+      setError("ขนาดไฟล์ต้องไม่เกิน 5MB");
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+
     setUploading(true);
     try {
       const formData = new FormData();

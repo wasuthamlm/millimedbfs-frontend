@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
 import { prisma } from "@/lib/prisma";
@@ -25,9 +26,10 @@ export default async function ProductsPage() {
       <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">สินค้า</h1>
       <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
         {products.map((product) => (
-          <div
+          <Link
             key={product.id}
-            className="overflow-hidden rounded-xl border border-slate-100 shadow-sm"
+            href={`/products/${product.id}`}
+            className="overflow-hidden rounded-xl border border-slate-100 shadow-sm transition-shadow hover:shadow-md"
           >
             <div className="relative aspect-square w-full bg-slate-50">
               {product.image ? (
@@ -49,7 +51,7 @@ export default async function ProductsPage() {
                 {product.nameTh}
               </h3>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </Container>

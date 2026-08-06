@@ -9,17 +9,28 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  --color-brand-navy: #16296b;
-  --color-brand-navy-dark: #0d1a4a;
-  --color-brand-gold: #f5b301;
-  --color-brand-gold-dark: #d99a00;
+  /* Overridable via inline style on the (site) layout wrapper from GlobalTheme (admin → Global Settings) */
+  --color-brand-navy: var(--brand-navy, #16296b);
+  --color-brand-navy-dark: var(--brand-navy-dark, #0d1a4a);
+  --color-brand-gold: var(--brand-gold, #f5b301);
+  --color-brand-gold-dark: var(--brand-gold-dark, #d99a00);
 
-  --font-sans: var(--font-thai), var(--font-thai-fallback), sans-serif;
+  --font-sans: var(--font-body, var(--font-thai)), var(--font-thai-fallback), sans-serif;
+  --font-heading: var(--font-heading-family, var(--font-thai)), var(--font-thai-fallback), sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
 }
 
 @keyframes scroll-fade-up {

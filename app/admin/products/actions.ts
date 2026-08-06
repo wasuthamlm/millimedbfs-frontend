@@ -15,6 +15,10 @@ const productSchema = z.object({
   descriptionTh: z.string().optional().or(z.literal("")),
   descriptionEn: z.string().optional().or(z.literal("")),
   imageUrl: z.string().url().optional().or(z.literal("")),
+  categoryId: z.string().optional().or(z.literal("")),
+  price: z.string().optional().or(z.literal("")),
+  featured: z.boolean().optional(),
+  bestSeller: z.boolean().optional(),
 });
 
 export type ProductFormInput = z.infer<typeof productSchema>;
@@ -30,6 +34,12 @@ async function resolveImageId(imageUrl?: string) {
   if (!imageUrl) return null;
   const media = await getOrCreateMedia(prisma, imageUrl);
   return media.id;
+}
+
+function parsePrice(price?: string): number | null {
+  if (!price) return null;
+  const n = Number(price);
+  return Number.isFinite(n) ? n : null;
 }
 
 export async function createProduct(input: ProductFormInput): Promise<ProductActionResult> {
@@ -52,6 +62,10 @@ export async function createProduct(input: ProductFormInput): Promise<ProductAct
         descriptionTh: data.descriptionTh || null,
         descriptionEn: data.descriptionEn || null,
         imageId,
+        categoryId: data.categoryId || null,
+        price: parsePrice(data.price),
+        featured: data.featured ?? false,
+        bestSeller: data.bestSeller ?? false,
       },
     });
 
@@ -95,6 +109,10 @@ export async function updateProduct(
         descriptionTh: data.descriptionTh || null,
         descriptionEn: data.descriptionEn || null,
         imageId,
+        categoryId: data.categoryId || null,
+        price: parsePrice(data.price),
+        featured: data.featured ?? existing.featured,
+        bestSeller: data.bestSeller ?? existing.bestSeller,
       },
     });
 
@@ -115,6 +133,27 @@ export async function deleteProduct(id: string): Promise<{ error?: string }> {
   if (!existing) return { error: "ไม่พบสินค้า" };
 
   await prisma.product.delete({ where: { id } });
+  revalidateAll();
+  return {};
+}
+
+export async function setProductStatus(id: string, status: "ACTIVE" | "DRAFT" | "ARCHIVED") {
+  await requireAdmin();
+  await prisma.product.update({ where: { id }, data: { status } });
+  revalidateAll();
+  return {};
+}
+
+export async function toggleProductFeatured(id: string, featured: boolean) {
+  await requireAdmin();
+  await prisma.product.update({ where: { id }, data: { featured } });
+  revalidateAll();
+  return {};
+}
+
+export async function toggleProductBestSeller(id: string, bestSeller: boolean) {
+  await requireAdmin();
+  await prisma.product.update({ where: { id }, data: { bestSeller } });
   revalidateAll();
   return {};
 }

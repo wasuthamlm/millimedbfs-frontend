@@ -8,7 +8,7 @@ import { Menu, X, ChevronDown } from "@/components/ui/icons";
 import type { NavLink } from "@/data/nav";
 import { cn } from "@/lib/utils";
 
-export function MobileNav({ navLinks }: { navLinks: NavLink[] }) {
+export function MobileNav({ navLinks, iconColor }: { navLinks: NavLink[]; iconColor?: string }) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const pathname = usePathname();
@@ -19,7 +19,8 @@ export function MobileNav({ navLinks }: { navLinks: NavLink[] }) {
         type="button"
         aria-label="เปิดเมนู"
         onClick={() => setOpen(true)}
-        className="rounded-md p-2 text-slate-700 hover:bg-slate-100"
+        style={iconColor ? { color: iconColor } : undefined}
+        className={cn("rounded-md p-2 hover:bg-black/5", !iconColor && "text-slate-700")}
       >
         <Menu className="h-6 w-6" />
       </button>

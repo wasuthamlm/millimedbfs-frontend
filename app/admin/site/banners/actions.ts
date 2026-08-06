@@ -6,6 +6,31 @@ import { requireAdmin } from "@/lib/require-admin";
 import { getOrCreateMedia } from "@/lib/media";
 import type { Banner } from "@/data/admin-banners";
 
+export type BannerConfigInput = {
+  transitionEffect: string;
+  direction: string;
+  transitionSpeedMs: number;
+  displayDurationMs: number;
+  autoplay: boolean;
+  loop: boolean;
+  pauseOnHover: boolean;
+  showArrows: boolean;
+  showDots: boolean;
+};
+
+export async function saveBannerConfig(input: BannerConfigInput) {
+  await requireAdmin();
+
+  await prisma.siteBannerConfig.upsert({
+    where: { id: "singleton" },
+    update: input,
+    create: { id: "singleton", ...input },
+  });
+
+  revalidatePath("/admin/site/banners");
+  revalidatePath("/", "layout");
+}
+
 export async function saveBanners(banners: Banner[]) {
   await requireAdmin();
 

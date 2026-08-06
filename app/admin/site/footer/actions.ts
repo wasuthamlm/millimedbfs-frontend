@@ -12,7 +12,20 @@ type FooterContactInput = {
   tagline: string;
 };
 
-export async function saveFooterConfig(columns: FooterColumn[], contact: FooterContactInput) {
+export type FooterThemeInput = {
+  bgColor: string;
+  textColor: string;
+  accentColor: string;
+  desktopColumns: number;
+  copyrightTh: string;
+  copyrightEn: string;
+};
+
+export async function saveFooterConfig(
+  columns: FooterColumn[],
+  contact: FooterContactInput,
+  theme: FooterThemeInput
+) {
   await requireAdmin();
 
   await prisma.$transaction(async (tx) => {
@@ -32,6 +45,27 @@ export async function saveFooterConfig(columns: FooterColumn[], contact: FooterC
       where: { id: "singleton" },
       update: contact,
       create: { id: "singleton", ...contact },
+    });
+
+    await tx.footerConfig.upsert({
+      where: { id: "singleton" },
+      update: {
+        bgColor: theme.bgColor,
+        textColor: theme.textColor,
+        accentColor: theme.accentColor,
+        desktopColumns: theme.desktopColumns,
+        copyrightTh: theme.copyrightTh || null,
+        copyrightEn: theme.copyrightEn || null,
+      },
+      create: {
+        id: "singleton",
+        bgColor: theme.bgColor,
+        textColor: theme.textColor,
+        accentColor: theme.accentColor,
+        desktopColumns: theme.desktopColumns,
+        copyrightTh: theme.copyrightTh || null,
+        copyrightEn: theme.copyrightEn || null,
+      },
     });
   });
 

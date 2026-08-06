@@ -22,6 +22,7 @@ const postSchema = z.object({
   bodyTh: z.string().optional().or(z.literal("")),
   bodyEn: z.string().optional().or(z.literal("")),
   category: z.string().max(100).optional().or(z.literal("")),
+  categoryId: z.string().optional().or(z.literal("")),
   featured: z.boolean().optional(),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
 });
@@ -39,6 +40,13 @@ async function resolveCoverImageId(coverImageUrl?: string) {
   if (!coverImageUrl) return null;
   const media = await getOrCreateMedia(prisma, coverImageUrl);
   return media.id;
+}
+
+/** categoryId is the source of truth; `category` (legacy free-text, still shown on the public site) is kept in sync from it. */
+async function resolveCategory(categoryId?: string) {
+  if (!categoryId) return { categoryId: null, category: null };
+  const cat = await prisma.articleCategory.findUnique({ where: { id: categoryId } });
+  return { categoryId: cat?.id ?? null, category: cat?.nameTh ?? null };
 }
 
 function revalidateAll(kind: PostFormInput["kind"], slugs: string[]) {
@@ -63,6 +71,7 @@ export async function createPost(input: PostFormInput): Promise<PostActionResult
 
   try {
     const coverImageId = await resolveCoverImageId(data.coverImageUrl);
+    const { categoryId, category } = await resolveCategory(data.categoryId);
     const post = await prisma.post.create({
       data: {
         kind: data.kind,
@@ -74,7 +83,8 @@ export async function createPost(input: PostFormInput): Promise<PostActionResult
         excerptEn: data.excerptEn || null,
         bodyTh: data.bodyTh || null,
         bodyEn: data.bodyEn || null,
-        category: data.category || null,
+        categoryId,
+        category,
         featured: data.featured ?? false,
         coverImageId,
         publishedAt: data.status === "PUBLISHED" ? new Date() : null,
@@ -109,6 +119,7 @@ export async function updatePost(id: string, input: PostFormInput): Promise<Post
     const coverImageId = data.coverImageUrl
       ? await resolveCoverImageId(data.coverImageUrl)
       : existing.coverImageId;
+    const { categoryId, category } = await resolveCategory(data.categoryId);
 
     const publishedAt =
       data.status === "PUBLISHED" ? existing.publishedAt ?? new Date() : existing.publishedAt;
@@ -125,7 +136,8 @@ export async function updatePost(id: string, input: PostFormInput): Promise<Post
         excerptEn: data.excerptEn || null,
         bodyTh: data.bodyTh || null,
         bodyEn: data.bodyEn || null,
-        category: data.category || null,
+        categoryId,
+        category,
         featured: data.featured ?? false,
         coverImageId,
         publishedAt,
@@ -155,6 +167,52 @@ export async function deletePost(id: string): Promise<{ error?: string }> {
   if (!existing) return { error: "ไม่พบบทความ" };
 
   await prisma.post.delete({ where: { id } });
+  revalidateAll(existing.kind, [existing.slug]);
+  return {};
+}
+
+export async function setPostStatus(id: string, status: "DRAFT" | "PUBLISHED"): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const existing = await prisma.post.findUnique({ where: { id } });
+  if (!existing) return { error: "ไม่พบบทความ" };
+
+  await prisma.post.update({
+    where: { id },
+    data: {
+      status,
+      publishedAt: status === "PUBLISHED" ? existing.publishedAt ?? new Date() : existing.publishedAt,
+    },
+  });
+
+  revalidateAll(existing.kind, [existing.slug]);
+  return {};
+}
+
+export async function setPostKind(id: string, kind: "ARTICLE" | "NEWS"): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const existing = await prisma.post.findUnique({ where: { id } });
+  if (!existing) return { error: "ไม่พบบทความ" };
+
+  await prisma.post.update({ where: { id }, data: { kind } });
+
+  revalidateAll(kind, [existing.slug]);
+  if (existing.kind !== kind) {
+    revalidateAll(existing.kind, [existing.slug]);
+  }
+  return {};
+}
+
+export async function setPostCategory(id: string, categoryId: string): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const existing = await prisma.post.findUnique({ where: { id } });
+  if (!existing) return { error: "ไม่พบบทความ" };
+
+  const { categoryId: resolvedId, category } = await resolveCategory(categoryId);
+  await prisma.post.update({ where: { id }, data: { categoryId: resolvedId, category } });
+
   revalidateAll(existing.kind, [existing.slug]);
   return {};
 }

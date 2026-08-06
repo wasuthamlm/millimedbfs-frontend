@@ -10,6 +10,8 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Migrate CLI needs a real session (advisory locks), so it uses the session-mode URL,
+    // not the transaction-mode pooler URL the app uses at runtime (see lib/prisma.ts).
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });

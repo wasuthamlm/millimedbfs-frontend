@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PageHeader } from "@/components/admin/PageHeader";
-import { StatusBadge } from "@/components/admin/StatusBadge";
-import { GlobeIcon } from "@/components/ui/admin-icons";
 import type { PageSection, SectionType } from "@/data/admin-pages";
 import { PageEditor } from "@/components/admin/pages/PageEditor";
 import { prisma } from "@/lib/prisma";
 import { toArticleView, toNewsView } from "@/lib/post-view";
+import { calculatePageSeoScore } from "@/lib/seo-score";
 import type { SectionType as PrismaSectionType } from "@/lib/generated/prisma/client";
 import type { NavLink } from "@/data/nav";
 
@@ -39,7 +36,7 @@ export default async function PageEditorRoute({
 }) {
   const { slug } = await params;
 
-  const [dbPage, articleCount, newsCount, articlePosts, newsPosts, navRows, footerColumns, footerContact] =
+  const [dbPage, articleCount, newsCount, articlePosts, newsPosts, navRows, footerColumns, footerContact, navLinkCount] =
     await Promise.all([
       prisma.page.findUnique({
         where: { slug },
@@ -67,6 +64,7 @@ export default async function PageEditorRoute({
         include: { links: { orderBy: { order: "asc" } } },
       }),
       prisma.footerContact.findUnique({ where: { id: "singleton" } }),
+      prisma.navLink.count({ where: { href: slug === "home" ? "/" : `/${slug}` } }),
     ]);
 
   if (!dbPage) notFound();
@@ -84,7 +82,8 @@ export default async function PageEditorRoute({
     }));
 
   const sections: PageSection[] = dbPage.sections.map((row) => {
-    const config = (row.config as { sourceLabel?: string } | null) ?? {};
+    const config =
+      (row.config as { sourceLabel?: string; anchorId?: string; bodyTh?: string; imageUrl?: string } | null) ?? {};
     return {
       id: row.id,
       order: row.order,
@@ -92,6 +91,9 @@ export default async function PageEditorRoute({
       titleTh: row.titleTh,
       titleEn: row.titleEn ?? "",
       sourceLabel: config.sourceLabel ?? "",
+      anchorId: config.anchorId ?? "",
+      bodyTh: config.bodyTh ?? "",
+      imageUrl: config.imageUrl ?? "",
       visibility: {
         desktop: row.visibleDesktop,
         tablet: row.visibleTablet,
@@ -102,36 +104,30 @@ export default async function PageEditorRoute({
     };
   });
 
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <PageHeader
-          icon={GlobeIcon}
-          title={dbPage.titleTh}
-          subtitle={`/${dbPage.slug}${dbPage.titleEn ? ` · ${dbPage.titleEn}` : ""}`}
-        />
-        <div className="flex items-center gap-3">
-          <StatusBadge status={dbPage.status} />
-          <Link
-            href="/admin/pages"
-            className="text-sm font-medium text-brand-navy hover:text-brand-gold-dark"
-          >
-            ← กลับไป Page Manager
-          </Link>
-        </div>
-      </div>
+  const seoScore = calculatePageSeoScore({
+    titleTh: dbPage.titleTh,
+    titleEn: dbPage.titleEn,
+    seoTitle: dbPage.seoTitle,
+    seoDesc: dbPage.seoDesc,
+    slug: dbPage.slug,
+    sectionsCount: sections.length,
+  }).score;
 
-      <PageEditor
-        page={{ slug: dbPage.slug, titleTh: dbPage.titleTh }}
-        initialSections={sections}
-        articleCount={articleCount}
-        newsCount={newsCount}
-        previewArticles={previewArticles}
-        previewNews={previewNews}
-        navLinks={navLinks}
-        footerColumns={footerColumns}
-        footerContact={footerContact}
-      />
-    </div>
+  return (
+    <PageEditor
+      page={{ id: dbPage.id, slug: dbPage.slug, titleTh: dbPage.titleTh, status: dbPage.status }}
+      initialSections={sections}
+      seoScore={seoScore}
+      seoTitle={dbPage.seoTitle ?? ""}
+      seoDesc={dbPage.seoDesc ?? ""}
+      navLinkCount={navLinkCount}
+      articleCount={articleCount}
+      newsCount={newsCount}
+      previewArticles={previewArticles}
+      previewNews={previewNews}
+      navLinks={navLinks}
+      footerColumns={footerColumns}
+      footerContact={footerContact}
+    />
   );
 }

@@ -27,8 +27,8 @@ export const adminNavItems: AdminNavItem[] = [
     href: "/admin/products",
     icon: BoxIcon,
     children: [
-      { label: "สินค้าทั้งหมด", href: "/admin/products" },
-      { label: "เพิ่มสินค้าใหม่", href: "/admin/products/new" },
+      { label: "รายการสินค้า", href: "/admin/products" },
+      { label: "จัดการหมวดหมู่", href: "/admin/products/categories" },
     ],
   },
   {
@@ -36,8 +36,8 @@ export const adminNavItems: AdminNavItem[] = [
     href: "/admin/articles",
     icon: FileTextIcon,
     children: [
-      { label: "บทความทั้งหมด", href: "/admin/articles" },
-      { label: "เพิ่มบทความใหม่", href: "/admin/articles/new" },
+      { label: "รายการบทความ", href: "/admin/articles" },
+      { label: "จัดการประเภท", href: "/admin/articles/categories" },
     ],
   },
   {
@@ -47,7 +47,7 @@ export const adminNavItems: AdminNavItem[] = [
     children: [
       { label: "จัดการ Header", href: "/admin/site/header" },
       { label: "จัดการ Banners", href: "/admin/site/banners" },
-      { label: "จัดการหน้าเว็บ (หน้าแรก)", href: "/admin/pages" },
+      { label: "จัดการหน้าเว็บ", href: "/admin/pages" },
       { label: "จัดการ Popup", href: "/admin/site/popup" },
       { label: "จัดการ Footer", href: "/admin/site/footer" },
       { label: "จัดการ Widgets", href: "/admin/site/widgets" },

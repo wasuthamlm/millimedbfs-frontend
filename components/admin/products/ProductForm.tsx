@@ -21,7 +21,13 @@ export type InitialProduct = {
   descriptionTh: string;
   descriptionEn: string;
   imageUrl: string;
+  categoryId: string;
+  price: string;
+  featured: boolean;
+  bestSeller: boolean;
 };
+
+export type ProductCategoryOption = { id: string; nameTh: string; parentId: string | null };
 
 const EMPTY_PRODUCT: InitialProduct = {
   id: "",
@@ -32,13 +38,23 @@ const EMPTY_PRODUCT: InitialProduct = {
   descriptionTh: "",
   descriptionEn: "",
   imageUrl: "",
+  categoryId: "",
+  price: "",
+  featured: false,
+  bestSeller: false,
 };
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy";
 const labelClass = "mb-1 block text-sm font-medium text-slate-700";
 
-export function ProductForm({ initialProduct }: { initialProduct?: InitialProduct }) {
+export function ProductForm({
+  initialProduct,
+  categories = [],
+}: {
+  initialProduct?: InitialProduct;
+  categories?: ProductCategoryOption[];
+}) {
   const router = useRouter();
   const isEdit = Boolean(initialProduct?.id);
   const [form, setForm] = useState<InitialProduct>(initialProduct ?? EMPTY_PRODUCT);
@@ -58,6 +74,10 @@ export function ProductForm({ initialProduct }: { initialProduct?: InitialProduc
       descriptionTh: form.descriptionTh,
       descriptionEn: form.descriptionEn,
       imageUrl: form.imageUrl,
+      categoryId: form.categoryId,
+      price: form.price,
+      featured: form.featured,
+      bestSeller: form.bestSeller,
     };
 
     const result = isEdit
@@ -109,6 +129,61 @@ export function ProductForm({ initialProduct }: { initialProduct?: InitialProduc
             <option value="DRAFT">ฉบับร่าง</option>
             <option value="ARCHIVED">เก็บถาวร</option>
           </select>
+        </div>
+
+        <div>
+          <label className={labelClass}>หมวดหมู่</label>
+          <select
+            className={inputClass}
+            value={form.categoryId}
+            onChange={(e) => update("categoryId", e.target.value)}
+          >
+            <option value="">— ไม่ระบุ —</option>
+            {categories
+              .filter((c) => !c.parentId)
+              .flatMap((parent) => [
+                parent,
+                ...categories.filter((c) => c.parentId === parent.id),
+              ])
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.parentId ? `— ${c.nameTh}` : c.nameTh}
+                </option>
+              ))}
+          </select>
+        </div>
+
+        <div>
+          <label className={labelClass}>ราคา (บาท)</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            className={inputClass}
+            value={form.price}
+            onChange={(e) => update("price", e.target.value)}
+          />
+        </div>
+
+        <div className="flex items-end gap-6">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-brand-navy"
+              checked={form.featured}
+              onChange={(e) => update("featured", e.target.checked)}
+            />
+            สินค้าแนะนำ (Featured)
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-brand-navy"
+              checked={form.bestSeller}
+              onChange={(e) => update("bestSeller", e.target.checked)}
+            />
+            ขายดี (Best Seller)
+          </label>
         </div>
 
         <div>

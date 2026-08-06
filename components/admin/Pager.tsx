@@ -5,14 +5,24 @@ export function Pager({
   page,
   totalPages,
   basePath,
+  extraParams,
 }: {
   page: number;
   totalPages: number;
   basePath: string;
+  extraParams?: Record<string, string | undefined>;
 }) {
   if (totalPages <= 1) return null;
 
-  const hrefFor = (p: number) => (p <= 1 ? basePath : `${basePath}?page=${p}`);
+  const hrefFor = (p: number) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(extraParams ?? {})) {
+      if (value) params.set(key, value);
+    }
+    if (p > 1) params.set("page", String(p));
+    const qs = params.toString();
+    return qs ? `${basePath}?${qs}` : basePath;
+  };
   const linkClass =
     "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50";
   const disabledClass =

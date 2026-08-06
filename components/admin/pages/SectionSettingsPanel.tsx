@@ -30,13 +30,13 @@ export function SectionSettingsPanel({
   };
 
   return (
-    <div className="border-t border-slate-100 bg-slate-50/60 px-6 py-6">
-      <div className="mb-6 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-5">
+      <div className="mb-6 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
         <div>
           <p className="text-sm font-semibold text-slate-800">การแสดงผลตามอุปกรณ์</p>
           <p className="text-xs text-slate-400">เลือกว่าจะให้ section นี้แสดงบนหน้าจอแบบไหน</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           {(
             [
               ["desktop", "Desktop"],
@@ -49,13 +49,13 @@ export function SectionSettingsPanel({
                 type="checkbox"
                 checked={section.visibility[key]}
                 onChange={() => toggleVisibility(key)}
-                className="h-4 w-4 rounded border-slate-300 text-brand-navy focus:ring-brand-navy"
+                className="h-4 w-4 shrink-0 rounded border-slate-300 text-brand-navy focus:ring-brand-navy"
               />
               {label}
             </label>
           ))}
-          <SaveButton label="บันทึกการแสดงผล" onSave={onSave} />
         </div>
+        <SaveButton label="บันทึกการแสดงผล" onSave={onSave} className="w-full justify-center" />
       </div>
 
       <div className="flex flex-col gap-5">
@@ -71,13 +71,16 @@ export function SectionSettingsPanel({
           แหล่งข้อมูล: {section.sourceLabel}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500">หัวข้อ Section (TH)</label>
+            <label className="mb-1.5 block text-xs font-medium text-slate-500">
+              {section.type === "company-intro" ? "ชื่อบล็อก (ใช้ในหลังบ้าน)" : "หัวข้อ Section (TH)"}
+            </label>
             <input
               type="text"
               value={section.titleTh}
               onChange={(e) => onChange({ titleTh: e.target.value })}
+              placeholder={section.type === "company-intro" ? "พิมพ์หัวข้อที่นี่..." : undefined}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-navy"
             />
           </div>
@@ -92,12 +95,50 @@ export function SectionSettingsPanel({
           </div>
         </div>
 
+        {section.type === "company-intro" && (
+          <>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-500">Anchor ID (ลิงก์กระโดด)</label>
+              <input
+                type="text"
+                value={section.anchorId ?? ""}
+                onChange={(e) => onChange({ anchorId: e.target.value })}
+                placeholder="เช่น about-us"
+                className="w-full max-w-xs rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-navy"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-500">เนื้อหา (TH)</label>
+              <textarea
+                value={section.bodyTh ?? ""}
+                onChange={(e) => onChange({ bodyTh: e.target.value })}
+                rows={6}
+                placeholder="พิมพ์เนื้อหาที่นี่..."
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-navy"
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                ตอนนี้เป็นข้อความล้วน (ไม่รองรับตัวหนา/ลิงก์แบบ rich text) เพื่อให้ตรงกับวิธีที่เว็บไซต์แสดงผลเนื้อหาบทความในปัจจุบัน
+              </p>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-500">URL รูปภาพ</label>
+              <input
+                type="text"
+                value={section.imageUrl ?? ""}
+                onChange={(e) => onChange({ imageUrl: e.target.value })}
+                placeholder="วาง URL รูปภาพ (อัปโหลดได้ที่คลังสื่อ)"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-navy"
+              />
+            </div>
+          </>
+        )}
+
         {hasDataBinding && (
           <>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-slate-500">เงื่อนไขการดึงข้อมูล</label>
               <select
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-navy sm:max-w-xs"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-navy"
                 defaultValue={section.type === "articles" ? "articles" : "news"}
               >
                 <option value="articles">บทความ</option>
@@ -109,7 +150,7 @@ export function SectionSettingsPanel({
               พบ {matched} รายการตรงเงื่อนไข
             </p>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-slate-500">จำนวนรายการที่แสดง</label>
                 <input

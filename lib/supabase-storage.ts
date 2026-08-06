@@ -22,6 +22,18 @@ export async function uploadToStorage(path: string, buffer: Buffer, contentType:
   return data.publicUrl;
 }
 
+export async function deleteFromStorage(publicUrl: string) {
+  const marker = `/object/public/${MEDIA_BUCKET}/`;
+  const idx = publicUrl.indexOf(marker);
+  if (idx === -1) return;
+  const path = publicUrl.slice(idx + marker.length);
+  if (!path) return;
+
+  const supabase = getServiceClient();
+  const { error } = await supabase.storage.from(MEDIA_BUCKET).remove([path]);
+  if (error) throw error;
+}
+
 export async function ensureMediaBucket() {
   const supabase = getServiceClient();
   const { data: buckets, error: listError } = await supabase.storage.listBuckets();
