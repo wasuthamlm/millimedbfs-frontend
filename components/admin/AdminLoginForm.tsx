@@ -34,8 +34,9 @@ export function AdminLoginForm() {
   return (
     <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">อีเมล</label>
+        <label htmlFor="admin-login-email" className="mb-1.5 block text-sm font-medium text-slate-700">อีเมล</label>
         <input
+          id="admin-login-email"
           type="email"
           required
           value={email}
@@ -44,8 +45,9 @@ export function AdminLoginForm() {
         />
       </div>
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">รหัสผ่าน</label>
+        <label htmlFor="admin-login-password" className="mb-1.5 block text-sm font-medium text-slate-700">รหัสผ่าน</label>
         <input
+          id="admin-login-password"
           type="password"
           required
           value={password}

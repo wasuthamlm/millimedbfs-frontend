@@ -38,8 +38,9 @@ export function RegisterForm() {
   return (
     <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">ชื่อ-นามสกุล</label>
+        <label htmlFor="register-name" className="mb-1.5 block text-sm font-medium text-slate-700">ชื่อ-นามสกุล</label>
         <input
+          id="register-name"
           type="text"
           required
           value={name}
@@ -48,8 +49,9 @@ export function RegisterForm() {
         />
       </div>
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">อีเมล</label>
+        <label htmlFor="register-email" className="mb-1.5 block text-sm font-medium text-slate-700">อีเมล</label>
         <input
+          id="register-email"
           type="email"
           required
           value={email}
@@ -58,8 +60,9 @@ export function RegisterForm() {
         />
       </div>
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">รหัสผ่าน</label>
+        <label htmlFor="register-password" className="mb-1.5 block text-sm font-medium text-slate-700">รหัสผ่าน</label>
         <input
+          id="register-password"
           type="password"
           required
           minLength={8}

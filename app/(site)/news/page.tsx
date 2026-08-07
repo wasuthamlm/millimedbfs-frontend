@@ -7,6 +7,7 @@ import { toNewsView } from "@/lib/post-view";
 export const metadata: Metadata = {
   title: "ข่าวสาร",
   description: "ข่าวสารและกิจกรรมล่าสุดจาก Millimed BFS",
+  alternates: { canonical: "/news" },
 };
 
 export default async function NewsPage() {

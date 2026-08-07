@@ -31,8 +31,9 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">อีเมล</label>
+        <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-slate-700">อีเมล</label>
         <input
+          id="login-email"
           type="email"
           required
           value={email}
@@ -41,8 +42,9 @@ export function LoginForm() {
         />
       </div>
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">รหัสผ่าน</label>
+        <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-slate-700">รหัสผ่าน</label>
         <input
+          id="login-password"
           type="password"
           required
           value={password}

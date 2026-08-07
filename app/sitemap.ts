@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +20,11 @@ const staticRoutes = [
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = "https://millimedbfs.com";
-  const posts = await prisma.post.findMany({ where: { status: "PUBLISHED" } });
+  const base = SITE_URL;
+  const [posts, products] = await Promise.all([
+    prisma.post.findMany({ where: { status: "PUBLISHED" } }),
+    prisma.product.findMany({ where: { status: "ACTIVE" } }),
+  ]);
 
   return [
     ...staticRoutes.map((path) => ({
@@ -30,6 +34,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...posts.map((post) => ({
       url: `${base}/${post.kind === "NEWS" ? "news" : "articles"}/${post.slug}`,
       lastModified: post.publishedAt ?? post.createdAt,
+    })),
+    ...products.map((product) => ({
+      url: `${base}/products/${product.id}`,
+      lastModified: product.updatedAt,
     })),
   ];
 }

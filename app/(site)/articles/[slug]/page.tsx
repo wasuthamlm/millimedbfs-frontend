@@ -5,6 +5,7 @@ import { Container } from "@/components/ui/Container";
 import { prisma } from "@/lib/prisma";
 import { toArticleView } from "@/lib/post-view";
 import { formatThaiDate } from "@/lib/utils";
+import { buildOpenGraph, SITE_URL } from "@/lib/site";
 
 async function getArticle(slug: string) {
   const post = await prisma.post.findUnique({
@@ -34,7 +35,9 @@ export async function generateMetadata({
   const article = toArticleView(post);
   return {
     title: article.title,
-    openGraph: { images: [article.image] },
+    description: post.excerptTh || undefined,
+    alternates: { canonical: `/articles/${slug}` },
+    openGraph: buildOpenGraph({ type: "article", images: [article.image] }),
   };
 }
 
@@ -47,9 +50,25 @@ export default async function ArticleDetailPage({
   const post = await getArticle(slug);
   if (!post) notFound();
   const article = toArticleView(post);
+  const absoluteImage = article.image.startsWith("http") ? article.image : `${SITE_URL}${article.image}`;
+
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: article.title,
+    image: [absoluteImage],
+    datePublished: article.publishedAt,
+    dateModified: post.updatedAt.toISOString(),
+    author: { "@type": "Organization", name: "Millimed BFS" },
+    mainEntityOfPage: `${SITE_URL}/articles/${slug}`,
+  };
 
   return (
     <Container className="flex flex-col gap-6 py-14 sm:py-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
       <div className="relative aspect-[4/3] w-full max-w-2xl overflow-hidden rounded-2xl">
         <Image
           src={article.image}

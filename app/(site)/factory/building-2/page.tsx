@@ -3,6 +3,7 @@ import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
 
 export const metadata: Metadata = {
   title: "อาคารโรงงาน 2",
+  alternates: { canonical: "/factory/building-2" },
 };
 
 export default function FactoryBuilding2Page() {

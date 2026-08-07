@@ -1,10 +1,9 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import authConfig from "@/lib/auth.config";
+import { ADMIN_ROLES } from "@/lib/admin-roles";
 
 const { auth } = NextAuth(authConfig);
-
-const ADMIN_ROLES = new Set(["ADMIN", "EDITOR"]);
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;

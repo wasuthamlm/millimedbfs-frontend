@@ -7,6 +7,7 @@ import { toArticleView } from "@/lib/post-view";
 export const metadata: Metadata = {
   title: "บทความ",
   description: "บทความน่ารู้ด้านสุขภาพและความงามจาก Millimed BFS",
+  alternates: { canonical: "/articles" },
 };
 
 export default async function ArticlesPage() {

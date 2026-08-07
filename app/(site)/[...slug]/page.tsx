@@ -19,11 +19,13 @@ export async function generateMetadata({
   params: Promise<{ slug: string[] }>;
 }): Promise<Metadata> {
   const { slug: segments } = await params;
-  const page = await getPage(segments.join("/"));
+  const slug = segments.join("/");
+  const page = await getPage(slug);
   if (!page) return {};
   return {
     title: page.seoTitle || page.titleTh,
     description: page.seoDesc || undefined,
+    alternates: { canonical: `/${slug}` },
   };
 }
 

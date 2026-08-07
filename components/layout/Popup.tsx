@@ -48,6 +48,9 @@ export function Popup({ data }: { data: PopupData | null }) {
     if (data.endDate && new Date() > new Date(data.endDate)) return;
     if (!shouldShow(data.frequency)) return;
 
+    // sessionStorage/localStorage aren't available during SSR, so visibility
+    // can only be decided post-hydration; this must stay an effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpen(true);
     markShown(data.frequency);
   }, [data]);

@@ -3,6 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/ui/Container";
 import { prisma } from "@/lib/prisma";
+import { buildOpenGraph, SITE_URL } from "@/lib/site";
 
 async function getProduct(id: string) {
   const product = await prisma.product.findUnique({
@@ -32,7 +33,8 @@ export async function generateMetadata({
   return {
     title: product.nameTh,
     description: product.descriptionTh ?? undefined,
-    openGraph: product.image ? { images: [product.image.url] } : undefined,
+    alternates: { canonical: `/products/${id}` },
+    openGraph: product.image ? buildOpenGraph({ images: [product.image.url] }) : undefined,
   };
 }
 
@@ -45,8 +47,31 @@ export default async function ProductDetailPage({
   const product = await getProduct(id);
   if (!product) notFound();
 
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.nameTh,
+    sku: product.sku,
+    description: product.descriptionTh ?? undefined,
+    image: product.image ? [product.image.url] : undefined,
+    offers:
+      product.price != null
+        ? {
+            "@type": "Offer",
+            url: `${SITE_URL}/products/${id}`,
+            priceCurrency: "THB",
+            price: product.price,
+            availability: "https://schema.org/InStock",
+          }
+        : undefined,
+  };
+
   return (
     <Container className="grid gap-10 py-14 sm:py-20 lg:grid-cols-2">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
       <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-slate-50">
         {product.image ? (
           <Image

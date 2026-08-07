@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Thai, Inter, Prompt, Sarabun } from "next/font/google";
+import { buildOpenGraph, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const plexThai = IBM_Plex_Sans_Thai({
@@ -32,18 +33,14 @@ const sarabun = Sarabun({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://millimedbfs.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Millimed BFS",
-    template: "%s | Millimed BFS",
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
   },
   description:
     "Millimed BFS ผู้ผลิตและจำหน่ายผลิตภัณฑ์เวชภัณฑ์และการดูแลดวงตาชั้นนำของไทย ภายใต้แนวคิด Pass on Happiness",
-  openGraph: {
-    type: "website",
-    locale: "th_TH",
-    siteName: "Millimed BFS",
-  },
+  openGraph: buildOpenGraph({}),
 };
 
 export default function RootLayout({

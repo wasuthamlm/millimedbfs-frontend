@@ -167,7 +167,16 @@ export function CategoryManager({
     });
   };
 
-  let topLevelCounter = 0;
+  const topLevelIndexById = new Map<string, number>();
+  {
+    let counter = 0;
+    for (const row of ordered) {
+      if (!(hasHierarchy && !!row.parentId)) {
+        counter += 1;
+        topLevelIndexById.set(row.id, counter);
+      }
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -255,11 +264,10 @@ export function CategoryManager({
             {ordered.map((row) => {
               const isEditing = editingId === row.id;
               const isChild = hasHierarchy && !!row.parentId;
-              if (!isChild) topLevelCounter += 1;
               const groupParentId = isChild ? row.parentId : null;
               const groupIndex = isChild
                 ? childrenOf(row.parentId as string).findIndex((c) => c.id === row.id) + 1
-                : topLevelCounter;
+                : (topLevelIndexById.get(row.id) as number);
 
               return (
                 <tr

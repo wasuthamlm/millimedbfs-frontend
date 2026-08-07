@@ -62,8 +62,9 @@ export function ContactForm() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">ชื่อ-นามสกุล</label>
+          <label htmlFor="contact-name" className="mb-1.5 block text-sm font-medium text-slate-700">ชื่อ-นามสกุล</label>
           <input
+            id="contact-name"
             type="text"
             required
             value={name}
@@ -72,8 +73,9 @@ export function ContactForm() {
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">อีเมล</label>
+          <label htmlFor="contact-email" className="mb-1.5 block text-sm font-medium text-slate-700">อีเมล</label>
           <input
+            id="contact-email"
             type="email"
             required
             value={email}
@@ -82,8 +84,9 @@ export function ContactForm() {
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">เบอร์โทรศัพท์</label>
+          <label htmlFor="contact-phone" className="mb-1.5 block text-sm font-medium text-slate-700">เบอร์โทรศัพท์</label>
           <input
+            id="contact-phone"
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -91,8 +94,9 @@ export function ContactForm() {
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">หัวข้อ</label>
+          <label htmlFor="contact-subject" className="mb-1.5 block text-sm font-medium text-slate-700">หัวข้อ</label>
           <input
+            id="contact-subject"
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
@@ -101,8 +105,9 @@ export function ContactForm() {
         </div>
       </div>
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">ข้อความ</label>
+        <label htmlFor="contact-message" className="mb-1.5 block text-sm font-medium text-slate-700">ข้อความ</label>
         <textarea
+          id="contact-message"
           required
           rows={5}
           value={message}

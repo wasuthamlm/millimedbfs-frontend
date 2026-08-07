@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { clientIp, isRateLimited } from "@/lib/rate-limit";
 
 const contactSchema = z.object({
   name: z.string().min(1).max(120),
@@ -11,6 +12,10 @@ const contactSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (isRateLimited(`contact:${clientIp(request)}`, 5, 10 * 60 * 1000)) {
+    return NextResponse.json({ error: "ส่งข้อความบ่อยเกินไป กรุณาลองใหม่ภายหลัง" }, { status: 429 });
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = contactSchema.safeParse(body);
 
@@ -20,15 +25,19 @@ export async function POST(request: Request) {
 
   const { name, email, phone, subject, body: message } = parsed.data;
 
-  await prisma.contactMessage.create({
-    data: {
-      name,
-      email,
-      phone: phone || null,
-      subject: subject || null,
-      body: message,
-    },
-  });
+  try {
+    await prisma.contactMessage.create({
+      data: {
+        name,
+        email,
+        phone: phone || null,
+        subject: subject || null,
+        body: message,
+      },
+    });
+  } catch {
+    return NextResponse.json({ error: "ส่งข้อความไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }

@@ -3,6 +3,7 @@ import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
 
 export const metadata: Metadata = {
   title: "ผลิตภัณฑ์ดูแลผิว",
+  alternates: { canonical: "/products/skin-care" },
 };
 
 export default function SkinCarePage() {

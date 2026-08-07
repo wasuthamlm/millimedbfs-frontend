@@ -1,9 +1,19 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { toArticleView, toNewsView } from "@/lib/post-view";
 import { PageSectionsRenderer } from "@/components/site/PageSectionsRenderer";
 import type { SectionType } from "@/lib/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await prisma.page.findUnique({ where: { slug: "home" } });
+  return {
+    title: page?.seoTitle || page?.titleTh || undefined,
+    description: page?.seoDesc || undefined,
+    alternates: { canonical: "/" },
+  };
+}
 
 const DEFAULT_SECTIONS = [
   { id: "default-hero", type: "HERO_BANNERS" as SectionType },

@@ -6,12 +6,14 @@ import { SiteSettingsTab, type SiteSettingsData, type ContactInfoData, type Bran
 import { GlobalThemeTab, type GlobalThemeData } from "./GlobalThemeTab";
 import { LocalesTab } from "./LocalesTab";
 import { AiSettingsTab, type AiSettingsData } from "./AiSettingsTab";
+import { ChangePasswordForm } from "./ChangePasswordForm";
 
 const TABS = [
   { key: "site", label: "Site Settings" },
   { key: "global", label: "Global Settings" },
   { key: "locales", label: "ภาษา · Locales" },
   { key: "ai", label: "AI Settings" },
+  { key: "account", label: "บัญชีผู้ใช้" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -55,6 +57,7 @@ export function SettingsClient({
       {tab === "global" && <GlobalThemeTab initial={globalTheme} />}
       {tab === "locales" && <LocalesTab />}
       {tab === "ai" && <AiSettingsTab initial={aiSettings} />}
+      {tab === "account" && <ChangePasswordForm />}
     </div>
   );
 }

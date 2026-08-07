@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -26,14 +26,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(() => findActiveParent(pathname) ?? null);
+  const [trackedPathname, setTrackedPathname] = useState(pathname);
 
   // Re-sync which submenu is open whenever the active route's section changes,
   // so navigating into a different section auto-expands it (single accordion),
   // and close the mobile drawer so it doesn't stay open after navigating.
-  useEffect(() => {
+  if (pathname !== trackedPathname) {
+    setTrackedPathname(pathname);
     setOpenMenu(findActiveParent(pathname) ?? null);
     setMobileOpen(false);
-  }, [pathname]);
+  }
 
   const toggleMenu = (href: string) => {
     setOpenMenu((prev) => (prev === href ? null : href));

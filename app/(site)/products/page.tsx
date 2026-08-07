@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 export const metadata: Metadata = {
   title: "สินค้า",
   description: "ผลิตภัณฑ์ของ Millimed BFS",
+  alternates: { canonical: "/products" },
 };
 
 export default async function ProductsPage() {

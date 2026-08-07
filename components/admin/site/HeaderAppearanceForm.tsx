@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { SaveButton } from "@/components/admin/SaveButton";
-import { Toggle } from "@/components/admin/Toggle";
 import { ChevronDown } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { saveHeaderConfig, type HeaderConfigInput } from "@/app/admin/site/header/actions";

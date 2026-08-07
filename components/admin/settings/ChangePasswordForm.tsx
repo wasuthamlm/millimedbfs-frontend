@@ -65,8 +65,9 @@ export function ChangePasswordForm() {
       )}
 
       <div>
-        <label className={labelClass}>รหัสผ่านปัจจุบัน</label>
+        <label htmlFor="change-password-current" className={labelClass}>รหัสผ่านปัจจุบัน</label>
         <input
+          id="change-password-current"
           type="password"
           className={inputClass}
           value={currentPassword}
@@ -76,8 +77,9 @@ export function ChangePasswordForm() {
       </div>
 
       <div>
-        <label className={labelClass}>รหัสผ่านใหม่</label>
+        <label htmlFor="change-password-new" className={labelClass}>รหัสผ่านใหม่</label>
         <input
+          id="change-password-new"
           type="password"
           className={inputClass}
           value={newPassword}
@@ -88,8 +90,9 @@ export function ChangePasswordForm() {
       </div>
 
       <div>
-        <label className={labelClass}>ยืนยันรหัสผ่านใหม่</label>
+        <label htmlFor="change-password-confirm" className={labelClass}>ยืนยันรหัสผ่านใหม่</label>
         <input
+          id="change-password-confirm"
           type="password"
           className={inputClass}
           value={confirmPassword}

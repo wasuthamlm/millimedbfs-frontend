@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 export const metadata: Metadata = {
   title: "ติดต่อเรา",
   description: "ช่องทางการติดต่อ Millimed BFS",
+  alternates: { canonical: "/contact" },
 };
 
 export default async function ContactPage() {

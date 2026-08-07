@@ -10,11 +10,26 @@ import { CookieConsent } from "@/components/layout/CookieConsent";
 import { SocialFloatButtons, type SocialFloatItem } from "@/components/layout/SocialFloatButtons";
 import { prisma } from "@/lib/prisma";
 import { globalThemeStyle } from "@/lib/theme";
+import { buildOpenGraph, SITE_NAME, SITE_URL } from "@/lib/site";
 import type { NavLink } from "@/data/nav";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const siteSettings = await prisma.siteSettings.findUnique({ where: { id: "singleton" }, include: { favicon: true } });
-  return siteSettings?.favicon?.url ? { icons: { icon: siteSettings.favicon.url } } : {};
+  const siteSettings = await prisma.siteSettings.findUnique({
+    where: { id: "singleton" },
+    include: { favicon: true, siteLogo: true },
+  });
+  return {
+    // Admin-editable site-wide SEO title/description (Settings > Site Settings).
+    // Pages that define their own title/description still win — Next merges
+    // top-level Metadata keys individually, not the whole object.
+    title: siteSettings?.seoMetaTitleTh || undefined,
+    description: siteSettings?.seoMetaDescTh || undefined,
+    icons: siteSettings?.favicon?.url ? { icon: siteSettings.favicon.url } : undefined,
+    // Fallback OG image for any page under (site) that doesn't set its own —
+    // more specific page metadata overwrites this entirely (Next merges
+    // openGraph by full replacement, not deep merge).
+    openGraph: siteSettings?.siteLogo?.url ? buildOpenGraph({ images: [siteSettings.siteLogo.url] }) : undefined,
+  };
 }
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
@@ -71,8 +86,35 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       }
     : null;
 
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: siteSettings?.siteNameTh || SITE_NAME,
+    url: SITE_URL,
+    logo: siteSettings?.siteLogo?.url,
+    sameAs: [
+      siteSettings?.facebookUrl,
+      siteSettings?.instagramUrl,
+      siteSettings?.youtubeUrl,
+      siteSettings?.tiktokUrl,
+      siteSettings?.lineUrl,
+    ].filter((url): url is string => !!url),
+    contactPoint: footerContact?.phone
+      ? {
+          "@type": "ContactPoint",
+          telephone: footerContact.phone,
+          email: footerContact.email ?? undefined,
+          contactType: "customer service",
+        }
+      : undefined,
+  };
+
   return (
     <div className="flex min-h-full flex-1 flex-col" style={globalTheme ? globalThemeStyle(globalTheme) : undefined}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
       {siteSettings?.gtmId && (
         <Script id="gtm" strategy="afterInteractive">
           {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${siteSettings.gtmId}');`}

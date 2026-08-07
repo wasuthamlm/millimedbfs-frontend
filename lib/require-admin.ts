@@ -1,6 +1,5 @@
 import { auth } from "@/lib/auth";
-
-const ADMIN_ROLES = new Set(["ADMIN", "APPROVER", "CONTRIBUTOR"]);
+import { ADMIN_ROLES } from "@/lib/admin-roles";
 
 /** Call at the top of every admin-facing Server Action. Throws if the caller isn't an authenticated admin/approver/contributor. */
 export async function requireAdmin() {
