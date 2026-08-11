@@ -58,9 +58,26 @@ export async function setPageStatus(id: string, status: "DRAFT" | "PUBLISHED"): 
   return {};
 }
 
-export async function setPageSeo(id: string, seoTitle: string, seoDesc: string): Promise<{ error?: string }> {
+export type PageSeoInput = {
+  seoTitle: string;
+  seoDesc: string;
+  seoTitleEn: string;
+  seoDescEn: string;
+  seoNoIndex: boolean;
+};
+
+export async function setPageSeo(id: string, input: PageSeoInput): Promise<{ error?: string }> {
   await requireAdmin();
-  await prisma.page.update({ where: { id }, data: { seoTitle: seoTitle || null, seoDesc: seoDesc || null } });
+  await prisma.page.update({
+    where: { id },
+    data: {
+      seoTitle: input.seoTitle || null,
+      seoDesc: input.seoDesc || null,
+      seoTitleEn: input.seoTitleEn || null,
+      seoDescEn: input.seoDescEn || null,
+      seoNoIndex: input.seoNoIndex,
+    },
+  });
   revalidatePath("/admin/pages");
   revalidatePath("/", "layout");
   return {};

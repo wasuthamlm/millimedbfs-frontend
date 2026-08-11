@@ -4,6 +4,7 @@ import { LoginForm } from "@/components/auth/LoginForm";
 
 export const metadata: Metadata = {
   title: "เข้าสู่ระบบ",
+  robots: { index: false, follow: false },
 };
 
 export default function LoginPage() {

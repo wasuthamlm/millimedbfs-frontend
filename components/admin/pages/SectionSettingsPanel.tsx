@@ -2,6 +2,7 @@
 
 import { DatabaseIcon, CheckIcon } from "@/components/ui/admin-icons";
 import { SaveButton } from "@/components/admin/SaveButton";
+import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import type { PageSection, DeviceVisibility } from "@/data/admin-pages";
 
 export function SectionSettingsPanel({
@@ -109,16 +110,11 @@ export function SectionSettingsPanel({
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-slate-500">เนื้อหา (TH)</label>
-              <textarea
+              <RichTextEditor
                 value={section.bodyTh ?? ""}
-                onChange={(e) => onChange({ bodyTh: e.target.value })}
-                rows={6}
+                onChange={(html) => onChange({ bodyTh: html })}
                 placeholder="พิมพ์เนื้อหาที่นี่..."
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-navy"
               />
-              <p className="mt-1 text-xs text-slate-400">
-                ตอนนี้เป็นข้อความล้วน (ไม่รองรับตัวหนา/ลิงก์แบบ rich text) เพื่อให้ตรงกับวิธีที่เว็บไซต์แสดงผลเนื้อหาบทความในปัจจุบัน
-              </p>
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-slate-500">URL รูปภาพ</label>

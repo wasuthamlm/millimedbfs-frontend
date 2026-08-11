@@ -12,6 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: page?.seoTitle || page?.titleTh || undefined,
     description: page?.seoDesc || undefined,
     alternates: { canonical: "/" },
+    ...(page?.seoNoIndex ? { robots: { index: false, follow: false } } : {}),
   };
 }
 
@@ -73,7 +74,7 @@ export default async function Home() {
   const articleItems = articlePosts.map(toArticleView);
   const bannerItems = bannerRows
     .filter((b) => b.image)
-    .map((b) => ({ id: b.id, titleTh: b.titleTh, image: b.image!.url, link: b.link }));
+    .map((b) => ({ id: b.id, titleTh: b.titleTh, altText: b.altTextTh, image: b.image!.url, link: b.link }));
 
   return (
     <PageSectionsRenderer

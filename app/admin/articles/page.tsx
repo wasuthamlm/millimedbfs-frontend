@@ -9,7 +9,7 @@ import { PostKindCell } from "@/components/admin/articles/PostKindCell";
 import { PostCategoryCell } from "@/components/admin/articles/PostCategoryCell";
 import { PostRowMenu } from "@/components/admin/articles/PostRowMenu";
 import { SeoScoreBadge } from "@/components/admin/articles/SeoScoreBadge";
-import { calculateSeoScore } from "@/lib/seo-score";
+import { calculateSeoAeoGeo, postToScoreInput } from "@/lib/seo-score";
 import { prisma } from "@/lib/prisma";
 import { formatThaiDate } from "@/lib/utils";
 
@@ -91,15 +91,20 @@ export default async function AdminArticlesPage({
           </thead>
           <tbody>
             {posts.map((post) => {
-              const seo = calculateSeoScore({
-                titleTh: post.titleTh,
-                titleEn: post.titleEn,
-                excerptTh: post.excerptTh,
-                bodyTh: post.bodyTh,
-                slug: post.slug,
-                category: post.category,
-                hasCoverImage: !!post.coverImageId,
-              });
+              const seo = calculateSeoAeoGeo(
+                postToScoreInput({
+                  titleTh: post.titleTh,
+                  titleEn: post.titleEn,
+                  seoTitle: post.seoTitle,
+                  seoTitleEn: post.seoTitleEn,
+                  seoDesc: post.seoDesc,
+                  seoDescEn: post.seoDescEn,
+                  excerptTh: post.excerptTh,
+                  bodyTh: post.bodyTh,
+                  slug: post.slug,
+                  hasCoverImage: !!post.coverImageId,
+                }),
+              );
 
               return (
                 <tr key={post.id} className="border-b border-slate-50 last:border-0">
@@ -124,7 +129,7 @@ export default async function AdminArticlesPage({
                     <PostStatusCell id={post.id} status={post.status} />
                   </td>
                   <td className="px-6 py-3.5">
-                    <SeoScoreBadge score={seo.score} />
+                    <SeoScoreBadge score={seo.seo.score} />
                   </td>
                   <td className="px-6 py-3.5 text-slate-400">
                     {post.publishedAt ? formatThaiDate(post.publishedAt.toISOString()) : "—"}

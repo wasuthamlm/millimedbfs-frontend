@@ -34,6 +34,9 @@ export function PageEditor({
   seoScore,
   seoTitle,
   seoDesc,
+  seoTitleEn,
+  seoDescEn,
+  seoNoIndex,
   navLinkCount,
   articleCount,
   newsCount,
@@ -43,11 +46,14 @@ export function PageEditor({
   footerColumns,
   footerContact,
 }: {
-  page: { id: string; slug: string; titleTh: string; status: "DRAFT" | "PUBLISHED" };
+  page: { id: string; slug: string; titleTh: string; titleEn: string; status: "DRAFT" | "PUBLISHED" };
   initialSections: PageSection[];
   seoScore: number;
   seoTitle: string;
   seoDesc: string;
+  seoTitleEn: string;
+  seoDescEn: string;
+  seoNoIndex: boolean;
   navLinkCount: number;
   articleCount: number;
   newsCount: number;
@@ -294,7 +300,18 @@ export function PageEditor({
               </div>
             )
           ) : (
-            <SeoPanel pageId={page.id} initialSeoTitle={seoTitle} initialSeoDesc={seoDesc} />
+            <SeoPanel
+              pageId={page.id}
+              slug={page.slug}
+              titleTh={page.titleTh}
+              titleEn={page.titleEn}
+              sections={sections}
+              initialSeoTitle={seoTitle}
+              initialSeoDesc={seoDesc}
+              initialSeoTitleEn={seoTitleEn}
+              initialSeoDescEn={seoDescEn}
+              initialSeoNoIndex={seoNoIndex}
+            />
           )}
         </div>
       </div>

@@ -5,7 +5,7 @@ import { Container } from "@/components/ui/Container";
 import { prisma } from "@/lib/prisma";
 import { toNewsView } from "@/lib/post-view";
 import { formatThaiDate } from "@/lib/utils";
-import { buildOpenGraph, SITE_URL } from "@/lib/site";
+import { buildBreadcrumbJsonLd, buildOpenGraph, SITE_URL } from "@/lib/site";
 
 async function getNewsPost(slug: string) {
   const post = await prisma.post.findUnique({
@@ -33,11 +33,14 @@ export async function generateMetadata({
   const post = await getNewsPost(slug);
   if (!post) return {};
   const item = toNewsView(post);
+  const title = post.seoTitle || item.title;
+  const description = post.seoDesc || item.excerpt;
   return {
-    title: item.title,
-    description: item.excerpt,
+    title,
+    description,
     alternates: { canonical: `/news/${slug}` },
-    openGraph: buildOpenGraph({ type: "article", images: [item.image] }),
+    openGraph: buildOpenGraph({ type: "article", title, description, images: [item.image] }),
+    ...(post.seoNoIndex ? { robots: { index: false, follow: false } } : {}),
   };
 }
 
@@ -63,11 +66,21 @@ export default async function NewsDetailPage({
     mainEntityOfPage: `${SITE_URL}/news/${slug}`,
   };
 
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "หน้าแรก", path: "/" },
+    { name: "ข่าวสาร", path: "/news" },
+    { name: item.title, path: `/news/${slug}` },
+  ]);
+
   return (
     <Container className="flex flex-col gap-6 py-14 sm:py-20">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(newsJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl">
         <Image src={item.image} alt={item.title} fill className="object-cover" priority />

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight } from "@/components/ui/icons";
@@ -10,6 +9,7 @@ import { cn } from "@/lib/utils";
 export type HeroBannerItem = {
   id: string;
   titleTh: string;
+  altText?: string | null;
   image: string;
   link: string | null;
 };
@@ -33,8 +33,8 @@ const DEFAULT_CONFIG: HeroBannerConfig = {
   displayDurationMs: 5000,
   autoplay: true,
   loop: true,
-  pauseOnHover: false,
-  showArrows: false,
+  pauseOnHover: true,
+  showArrows: true,
   showDots: true,
 };
 
@@ -74,10 +74,12 @@ export function HeroBanners({
   const slideDirection = config.direction === "rtl" ? -1 : 1;
   const transitionSeconds = config.transitionSpeedMs / 1000;
 
+  // Plain <img>, not next/image: with no width/height attrs, "w-full h-auto"
+  // sizes to the file's own true aspect ratio, so the banner always fills the
+  // width with no crop and no side gaps, whatever aspect ratio it happens to be.
   const slide = (
-    <div className="relative aspect-[21/9] w-full overflow-hidden sm:aspect-[3/1]">
-      <Image src={current.image} alt={current.titleTh} fill priority className="object-cover" />
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={current.image} alt={current.altText || current.titleTh} className="block h-auto w-full" />
   );
 
   return (

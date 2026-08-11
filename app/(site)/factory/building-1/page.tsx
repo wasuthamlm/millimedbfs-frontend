@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { CmsPageOrPlaceholder } from "@/components/site/CmsPageOrPlaceholder";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "อาคารโรงงาน 1",
@@ -7,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function FactoryBuilding1Page() {
-  return <PlaceholderPage title="อาคารโรงงาน 1" />;
+  return <CmsPageOrPlaceholder slug="factory/building-1" title="อาคารโรงงาน 1" />;
 }

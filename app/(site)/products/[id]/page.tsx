@@ -3,7 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/ui/Container";
 import { prisma } from "@/lib/prisma";
-import { buildOpenGraph, SITE_URL } from "@/lib/site";
+import { buildBreadcrumbJsonLd, buildOpenGraph, SITE_URL } from "@/lib/site";
 
 async function getProduct(id: string) {
   const product = await prisma.product.findUnique({
@@ -30,11 +30,16 @@ export async function generateMetadata({
   const { id } = await params;
   const product = await getProduct(id);
   if (!product) return {};
+  const title = product.seoTitle || product.nameTh;
+  const description = product.seoDesc || product.descriptionTh || undefined;
   return {
-    title: product.nameTh,
-    description: product.descriptionTh ?? undefined,
+    title,
+    description,
     alternates: { canonical: `/products/${id}` },
-    openGraph: product.image ? buildOpenGraph({ images: [product.image.url] }) : undefined,
+    openGraph: product.image
+      ? buildOpenGraph({ title, description, images: [product.image.url] })
+      : undefined,
+    ...(product.seoNoIndex ? { robots: { index: false, follow: false } } : {}),
   };
 }
 
@@ -66,11 +71,21 @@ export default async function ProductDetailPage({
         : undefined,
   };
 
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "หน้าแรก", path: "/" },
+    { name: "ผลิตภัณฑ์", path: "/products" },
+    { name: product.nameTh, path: `/products/${id}` },
+  ]);
+
   return (
     <Container className="grid gap-10 py-14 sm:py-20 lg:grid-cols-2">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-slate-50">
         {product.image ? (

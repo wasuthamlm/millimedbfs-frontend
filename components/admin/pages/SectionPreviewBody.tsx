@@ -34,7 +34,7 @@ export function SectionPreviewBody({
     case "cta-bar":
       return (
         <div className="flex h-16 items-center justify-center bg-slate-50 text-sm text-slate-400">
-          แถบนี้ไม่แสดงผลจริง — ระบบแสดงแถบ &quot;สมัครสมาชิก / เข้าสู่ระบบ&quot; แบบ global อยู่แล้วทุกหน้า (ตั้งค่าที่ส่วนหัวเว็บไซต์)
+          แถบนี้ไม่แสดงผลจริง — บล็อกประเภทนี้ถูกปิดใช้งานถาวรแล้ว (เดิมเคยแสดงแถบ &quot;สมัครสมาชิก / เข้าสู่ระบบ&quot; แบบ global แต่ถูกลบออกจากทุกหน้าแล้ว)
         </div>
       );
     case "company-intro":

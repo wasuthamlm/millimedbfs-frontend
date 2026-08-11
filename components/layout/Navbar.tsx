@@ -26,18 +26,21 @@ export type HeaderConfig = {
   menuFontSize: string;
 };
 
+// Matches the Footer's fallback navy (var(--brand-navy-dark), #0d1a4a) so the
+// header and footer read as the same solid color when no admin header theme
+// has been configured yet.
 const DEFAULT_CONFIG: HeaderConfig = {
   layout: "logo-left-menu-center",
   height: "standard",
   shadow: "none",
   position: "fixed-top",
-  bgColor: "#ffffff",
-  textColor: "#334155",
-  hoverBgColor: "#f1f5f9",
-  hoverTextColor: "#16296b",
-  activeBgColor: "#16296b",
+  bgColor: "#0d1a4a",
+  textColor: "#ffffff",
+  hoverBgColor: "rgba(255,255,255,0.12)",
+  hoverTextColor: "#ffffff",
+  activeBgColor: "rgba(255,255,255,0.18)",
   activeTextColor: "#ffffff",
-  iconTextColor: "#16296b",
+  iconTextColor: "#ffffff",
   logoTextTh: null,
   menuWrap: "single-line",
   menuFontSize: "normal",

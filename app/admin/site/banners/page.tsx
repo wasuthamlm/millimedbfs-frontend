@@ -19,6 +19,11 @@ export default async function AdminBannersPage() {
   const initialBanners: Banner[] = rows.map((row) => ({
     id: row.id,
     titleTh: row.titleTh,
+    titleEn: row.titleEn ?? "",
+    altTextTh: row.altTextTh ?? "",
+    altTextEn: row.altTextEn ?? "",
+    captionTh: row.captionTh ?? "",
+    captionEn: row.captionEn ?? "",
     image: row.image?.url ?? "/images/news/expo-2025.svg",
     link: row.link ?? "/",
     order: row.order,

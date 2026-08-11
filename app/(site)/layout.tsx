@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Navbar } from "@/components/layout/Navbar";
-import { PromoBar } from "@/components/layout/PromoBar";
 import { Footer } from "@/components/layout/Footer";
 import { ScrollToTopButton } from "@/components/layout/ScrollToTopButton";
 import { SecretAdminAccess } from "@/components/layout/SecretAdminAccess";
@@ -27,8 +26,13 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: siteSettings?.favicon?.url ? { icon: siteSettings.favicon.url } : undefined,
     // Fallback OG image for any page under (site) that doesn't set its own —
     // more specific page metadata overwrites this entirely (Next merges
-    // openGraph by full replacement, not deep merge).
-    openGraph: siteSettings?.siteLogo?.url ? buildOpenGraph({ images: [siteSettings.siteLogo.url] }) : undefined,
+    // openGraph by full replacement, not deep merge). IMPORTANT: omit this key
+    // entirely rather than setting it to `undefined` when there's no logo —
+    // an explicit `undefined` still counts as "set" and wipes out the root
+    // layout's openGraph defaults instead of inheriting them.
+    ...(siteSettings?.siteLogo?.url
+      ? { openGraph: buildOpenGraph({ images: [siteSettings.siteLogo.url] }) }
+      : {}),
   };
 }
 
@@ -163,7 +167,6 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
             : undefined
         }
       />
-      <PromoBar tagline={footerContact?.tagline ?? undefined} />
       <main className="flex-1">{children}</main>
       <Footer
         columns={footerColumns}

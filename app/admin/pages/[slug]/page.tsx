@@ -4,7 +4,7 @@ import type { PageSection, SectionType } from "@/data/admin-pages";
 import { PageEditor } from "@/components/admin/pages/PageEditor";
 import { prisma } from "@/lib/prisma";
 import { toArticleView, toNewsView } from "@/lib/post-view";
-import { calculatePageSeoScore } from "@/lib/seo-score";
+import { calculateSeoAeoGeo, pageToScoreInput } from "@/lib/seo-score";
 import type { SectionType as PrismaSectionType } from "@/lib/generated/prisma/client";
 import type { NavLink } from "@/data/nav";
 
@@ -104,22 +104,29 @@ export default async function PageEditorRoute({
     };
   });
 
-  const seoScore = calculatePageSeoScore({
-    titleTh: dbPage.titleTh,
-    titleEn: dbPage.titleEn,
-    seoTitle: dbPage.seoTitle,
-    seoDesc: dbPage.seoDesc,
-    slug: dbPage.slug,
-    sectionsCount: sections.length,
-  }).score;
+  const seoScore = calculateSeoAeoGeo(
+    pageToScoreInput({
+      titleTh: dbPage.titleTh,
+      titleEn: dbPage.titleEn,
+      seoTitle: dbPage.seoTitle,
+      seoTitleEn: dbPage.seoTitleEn,
+      seoDesc: dbPage.seoDesc,
+      seoDescEn: dbPage.seoDescEn,
+      slug: dbPage.slug,
+      sections,
+    }),
+  ).overall;
 
   return (
     <PageEditor
-      page={{ id: dbPage.id, slug: dbPage.slug, titleTh: dbPage.titleTh, status: dbPage.status }}
+      page={{ id: dbPage.id, slug: dbPage.slug, titleTh: dbPage.titleTh, titleEn: dbPage.titleEn ?? "", status: dbPage.status }}
       initialSections={sections}
       seoScore={seoScore}
       seoTitle={dbPage.seoTitle ?? ""}
       seoDesc={dbPage.seoDesc ?? ""}
+      seoTitleEn={dbPage.seoTitleEn ?? ""}
+      seoDescEn={dbPage.seoDescEn ?? ""}
+      seoNoIndex={dbPage.seoNoIndex}
       navLinkCount={navLinkCount}
       articleCount={articleCount}
       newsCount={newsCount}

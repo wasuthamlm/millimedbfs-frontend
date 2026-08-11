@@ -4,6 +4,7 @@ import { RegisterForm } from "@/components/auth/RegisterForm";
 
 export const metadata: Metadata = {
   title: "สมัครสมาชิก",
+  robots: { index: false, follow: false },
 };
 
 export default function RegisterPage() {

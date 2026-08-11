@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { calculatePageSeoScore } from "@/lib/seo-score";
+import { calculateSeoAeoGeo, pageToScoreInput } from "@/lib/seo-score";
 import { sortByPageOrder } from "@/lib/page-order";
 import { PageManagerClient } from "@/components/admin/pages/PageManagerClient";
 
@@ -31,14 +31,19 @@ export default async function PageManagerPage({
     titleEn: page.titleEn,
     status: page.status,
     sectionsCount: page._count.sections,
-    seoScore: calculatePageSeoScore({
-      titleTh: page.titleTh,
-      titleEn: page.titleEn,
-      seoTitle: page.seoTitle,
-      seoDesc: page.seoDesc,
-      slug: page.slug,
-      sectionsCount: page._count.sections,
-    }).score,
+    seoScore: calculateSeoAeoGeo(
+      pageToScoreInput({
+        titleTh: page.titleTh,
+        titleEn: page.titleEn,
+        seoTitle: page.seoTitle,
+        seoTitleEn: page.seoTitleEn,
+        seoDesc: page.seoDesc,
+        seoDescEn: page.seoDescEn,
+        slug: page.slug,
+        // List view doesn't fetch section bodies; approximate structure depth from the count only.
+        sections: Array.from({ length: page._count.sections }, () => ({ titleTh: "" })),
+      }),
+    ).seo.score,
   }));
 
   return <PageManagerClient pages={rows} activeCount={activeCount} archivedCount={archivedCount} showTrash={showTrash} />;

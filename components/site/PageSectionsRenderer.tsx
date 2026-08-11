@@ -54,9 +54,9 @@ export function PageSectionsRenderer({
               </div>
             );
           case "CTA_BAR":
-            // The promo bar is already rendered globally in app/(site)/layout.tsx on every
-            // page, so rendering it again here would duplicate it. This section type is kept
-            // for backward compatibility with existing saved pages but intentionally no-ops.
+            // The global promo bar (สมัครสมาชิก / เข้าสู่ระบบ) was removed from
+            // app/(site)/layout.tsx. This section type is kept for backward
+            // compatibility with existing saved pages but intentionally no-ops.
             return null;
           case "LATEST_NEWS":
             return (

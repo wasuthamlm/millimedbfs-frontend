@@ -1,10 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SaveButton } from "@/components/admin/SaveButton";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { SeoScorePanel } from "@/components/admin/seo/SeoScorePanel";
 import { TrashIcon } from "@/components/ui/admin-icons";
+import { calculateSeoAeoGeo, productToScoreInput } from "@/lib/seo-score";
+import { SITE_URL } from "@/lib/site";
 import {
   createProduct,
   deleteProduct,
@@ -25,6 +28,11 @@ export type InitialProduct = {
   price: string;
   featured: boolean;
   bestSeller: boolean;
+  seoTitle: string;
+  seoDesc: string;
+  seoTitleEn: string;
+  seoDescEn: string;
+  seoNoIndex: boolean;
 };
 
 export type ProductCategoryOption = { id: string; nameTh: string; parentId: string | null };
@@ -42,6 +50,11 @@ const EMPTY_PRODUCT: InitialProduct = {
   price: "",
   featured: false,
   bestSeller: false,
+  seoTitle: "",
+  seoDesc: "",
+  seoTitleEn: "",
+  seoDescEn: "",
+  seoNoIndex: false,
 };
 
 const inputClass =
@@ -64,6 +77,34 @@ export function ProductForm({
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const seoResult = useMemo(
+    () =>
+      calculateSeoAeoGeo(
+        productToScoreInput({
+          nameTh: form.nameTh,
+          nameEn: form.nameEn,
+          seoTitle: form.seoTitle,
+          seoTitleEn: form.seoTitleEn,
+          seoDesc: form.seoDesc,
+          seoDescEn: form.seoDescEn,
+          descriptionTh: form.descriptionTh,
+          sku: form.sku,
+          hasImage: Boolean(form.imageUrl),
+        }),
+      ),
+    [
+      form.nameTh,
+      form.nameEn,
+      form.seoTitle,
+      form.seoTitleEn,
+      form.seoDesc,
+      form.seoDescEn,
+      form.descriptionTh,
+      form.sku,
+      form.imageUrl,
+    ],
+  );
+
   const handleSave = async () => {
     setError(null);
     const input: ProductFormInput = {
@@ -78,6 +119,11 @@ export function ProductForm({
       price: form.price,
       featured: form.featured,
       bestSeller: form.bestSeller,
+      seoTitle: form.seoTitle,
+      seoDesc: form.seoDesc,
+      seoTitleEn: form.seoTitleEn,
+      seoDescEn: form.seoDescEn,
+      seoNoIndex: form.seoNoIndex,
     };
 
     const result = isEdit
@@ -230,6 +276,73 @@ export function ProductForm({
             value={form.descriptionEn}
             onChange={(e) => update("descriptionEn", e.target.value)}
           />
+        </div>
+      </div>
+
+      <SeoScorePanel result={seoResult} />
+
+      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:grid-cols-2">
+        <h3 className="sm:col-span-2 text-sm font-semibold text-slate-800">SEO</h3>
+        <div>
+          <label className={labelClass}>Meta Title (TH)</label>
+          <input
+            className={inputClass}
+            value={form.seoTitle}
+            onChange={(e) => update("seoTitle", e.target.value)}
+            maxLength={70}
+            placeholder={form.nameTh || "ค่าเริ่มต้น: ใช้ชื่อสินค้า"}
+          />
+          <p className="mt-1 text-xs text-slate-400">{form.seoTitle.length}/70 ตัวอักษร</p>
+        </div>
+        <div>
+          <label className={labelClass}>Meta Title (EN)</label>
+          <input
+            className={inputClass}
+            value={form.seoTitleEn}
+            onChange={(e) => update("seoTitleEn", e.target.value)}
+            maxLength={70}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Meta Description (TH)</label>
+          <textarea
+            className={inputClass}
+            rows={3}
+            value={form.seoDesc}
+            onChange={(e) => update("seoDesc", e.target.value)}
+            maxLength={200}
+            placeholder={form.descriptionTh || "ค่าเริ่มต้น: ใช้รายละเอียดสินค้า"}
+          />
+          <p className="mt-1 text-xs text-slate-400">{form.seoDesc.length}/200 ตัวอักษร</p>
+        </div>
+        <div>
+          <label className={labelClass}>Meta Description (EN)</label>
+          <textarea
+            className={inputClass}
+            rows={3}
+            value={form.seoDescEn}
+            onChange={(e) => update("seoDescEn", e.target.value)}
+            maxLength={200}
+          />
+        </div>
+
+        <div className="sm:col-span-2 flex flex-col gap-2 border-t border-slate-100 pt-4">
+          <p className="text-xs font-semibold text-slate-600">Advanced SEO</p>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.seoNoIndex}
+              onChange={(e) => update("seoNoIndex", e.target.checked)}
+            />
+            ไม่ให้ Google จัดทำดัชนี (noindex)
+          </label>
+        </div>
+
+        <div className="sm:col-span-2 border-t border-slate-100 pt-4">
+          <p className="mb-1 text-xs font-medium text-slate-500">Canonical URL</p>
+          <p className="truncate text-sm text-slate-600">
+            {`${SITE_URL}/products/${form.id || "…"}`}
+          </p>
         </div>
       </div>
 

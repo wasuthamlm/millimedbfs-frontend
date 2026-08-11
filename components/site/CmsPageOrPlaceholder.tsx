@@ -1,49 +1,22 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toArticleView, toNewsView } from "@/lib/post-view";
+import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
 import { PageSectionsRenderer } from "@/components/site/PageSectionsRenderer";
 
-export const dynamic = "force-dynamic";
-
-async function getPage(slug: string) {
-  return prisma.page.findFirst({
+// Renders a CMS-managed page (Page + PageSection, editable from /admin/pages)
+// when one exists for `slug`, otherwise falls back to the "coming soon"
+// placeholder. Use this instead of a bare <PlaceholderPage /> for any route
+// that also has a fixed URL segment (so it can't go through the [...slug]
+// catch-all) — that way content added later in the admin actually shows up,
+// instead of being shadowed by a hardcoded placeholder forever.
+export async function CmsPageOrPlaceholder({ slug, title }: { slug: string; title: string }) {
+  const page = await prisma.page.findFirst({
     where: { slug, status: "PUBLISHED", archived: false },
     include: { sections: { orderBy: { order: "asc" } } },
   });
-}
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string[] }>;
-}): Promise<Metadata> {
-  const { slug: segments } = await params;
-  const slug = segments.join("/");
-  const page = await getPage(slug);
-  if (!page) return {};
-  return {
-    title: page.seoTitle || page.titleTh,
-    description: page.seoDesc || undefined,
-    alternates: { canonical: `/${slug}` },
-    ...(page.seoNoIndex ? { robots: { index: false, follow: false } } : {}),
-  };
-}
-
-export default async function DynamicPage({ params }: { params: Promise<{ slug: string[] }> }) {
-  const { slug: segments } = await params;
-  const slug = segments.join("/");
-
-  const page = await getPage(slug);
-  if (!page) notFound();
-
-  if (page.sections.length === 0) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-24 text-center">
-        <h1 className="text-2xl font-bold text-slate-900">{page.titleTh}</h1>
-        <p className="mt-3 text-slate-500">หน้านี้กำลังจะมาเร็ว ๆ นี้</p>
-      </div>
-    );
+  if (!page || page.sections.length === 0) {
+    return <PlaceholderPage title={title} />;
   }
 
   const needsNews = page.sections.some((s) => s.type === "LATEST_NEWS");
@@ -75,18 +48,14 @@ export default async function DynamicPage({ params }: { params: Promise<{ slug: 
     needsBanners ? prisma.siteBannerConfig.findUnique({ where: { id: "singleton" } }) : Promise.resolve(null),
   ]);
 
-  const newsItems = newsPosts.map(toNewsView);
-  const articleItems = articlePosts.map(toArticleView);
-  const bannerItems = bannerRows
-    .filter((b) => b.image)
-    .map((b) => ({ id: b.id, titleTh: b.titleTh, altText: b.altTextTh, image: b.image!.url, link: b.link }));
-
   return (
     <PageSectionsRenderer
       sections={page.sections}
-      newsItems={newsItems}
-      articleItems={articleItems}
-      bannerItems={bannerItems}
+      newsItems={newsPosts.map(toNewsView)}
+      articleItems={articlePosts.map(toArticleView)}
+      bannerItems={bannerRows
+        .filter((b) => b.image)
+        .map((b) => ({ id: b.id, titleTh: b.titleTh, altText: b.altTextTh, image: b.image!.url, link: b.link }))}
       bannerConfig={
         bannerConfig
           ? {

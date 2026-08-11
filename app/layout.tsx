@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Thai, Inter, Prompt, Sarabun } from "next/font/google";
-import { buildOpenGraph, SITE_NAME, SITE_URL } from "@/lib/site";
+import { buildOpenGraph, buildTwitter, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const plexThai = IBM_Plex_Sans_Thai({
@@ -41,6 +41,13 @@ export const metadata: Metadata = {
   description:
     "Millimed BFS ผู้ผลิตและจำหน่ายผลิตภัณฑ์เวชภัณฑ์และการดูแลดวงตาชั้นนำของไทย ภายใต้แนวคิด Pass on Happiness",
   openGraph: buildOpenGraph({}),
+  twitter: buildTwitter(),
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    ...(process.env.BING_SITE_VERIFICATION
+      ? { other: { "msvalidate.01": process.env.BING_SITE_VERIFICATION } }
+      : {}),
+  },
 };
 
 export default function RootLayout({

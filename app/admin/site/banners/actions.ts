@@ -42,6 +42,11 @@ export async function saveBanners(banners: Banner[]) {
       await tx.banner.create({
         data: {
           titleTh: banner.titleTh,
+          titleEn: banner.titleEn || null,
+          altTextTh: banner.altTextTh || null,
+          altTextEn: banner.altTextEn || null,
+          captionTh: banner.captionTh || null,
+          captionEn: banner.captionEn || null,
           imageId: media.id,
           link: banner.link,
           order: i,

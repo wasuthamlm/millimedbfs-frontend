@@ -19,15 +19,21 @@ const productSchema = z.object({
   price: z.string().optional().or(z.literal("")),
   featured: z.boolean().optional(),
   bestSeller: z.boolean().optional(),
+  seoTitle: z.string().max(70).optional().or(z.literal("")),
+  seoDesc: z.string().max(200).optional().or(z.literal("")),
+  seoTitleEn: z.string().max(70).optional().or(z.literal("")),
+  seoDescEn: z.string().max(200).optional().or(z.literal("")),
+  seoNoIndex: z.boolean().optional(),
 });
 
 export type ProductFormInput = z.infer<typeof productSchema>;
 export type ProductActionResult = { error: string } | { error?: undefined; id: string };
 
-function revalidateAll() {
+function revalidateAll(id?: string) {
   revalidatePath("/admin/products");
   revalidatePath("/admin");
   revalidatePath("/products");
+  if (id) revalidatePath(`/products/${id}`);
 }
 
 async function resolveImageId(imageUrl?: string) {
@@ -66,10 +72,15 @@ export async function createProduct(input: ProductFormInput): Promise<ProductAct
         price: parsePrice(data.price),
         featured: data.featured ?? false,
         bestSeller: data.bestSeller ?? false,
+        seoTitle: data.seoTitle || null,
+        seoDesc: data.seoDesc || null,
+        seoTitleEn: data.seoTitleEn || null,
+        seoDescEn: data.seoDescEn || null,
+        seoNoIndex: data.seoNoIndex ?? false,
       },
     });
 
-    revalidateAll();
+    revalidateAll(product.id);
     return { id: product.id };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -113,10 +124,15 @@ export async function updateProduct(
         price: parsePrice(data.price),
         featured: data.featured ?? existing.featured,
         bestSeller: data.bestSeller ?? existing.bestSeller,
+        seoTitle: data.seoTitle || null,
+        seoDesc: data.seoDesc || null,
+        seoTitleEn: data.seoTitleEn || null,
+        seoDescEn: data.seoDescEn || null,
+        seoNoIndex: data.seoNoIndex ?? false,
       },
     });
 
-    revalidateAll();
+    revalidateAll(id);
     return { id: product.id };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -133,27 +149,27 @@ export async function deleteProduct(id: string): Promise<{ error?: string }> {
   if (!existing) return { error: "ไม่พบสินค้า" };
 
   await prisma.product.delete({ where: { id } });
-  revalidateAll();
+  revalidateAll(id);
   return {};
 }
 
 export async function setProductStatus(id: string, status: "ACTIVE" | "DRAFT" | "ARCHIVED") {
   await requireAdmin();
   await prisma.product.update({ where: { id }, data: { status } });
-  revalidateAll();
+  revalidateAll(id);
   return {};
 }
 
 export async function toggleProductFeatured(id: string, featured: boolean) {
   await requireAdmin();
   await prisma.product.update({ where: { id }, data: { featured } });
-  revalidateAll();
+  revalidateAll(id);
   return {};
 }
 
 export async function toggleProductBestSeller(id: string, bestSeller: boolean) {
   await requireAdmin();
   await prisma.product.update({ where: { id }, data: { bestSeller } });
-  revalidateAll();
+  revalidateAll(id);
   return {};
 }

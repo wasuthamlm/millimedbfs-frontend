@@ -31,6 +31,11 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     price: product.price != null ? String(product.price) : "",
     featured: product.featured,
     bestSeller: product.bestSeller,
+    seoTitle: product.seoTitle ?? "",
+    seoDesc: product.seoDesc ?? "",
+    seoTitleEn: product.seoTitleEn ?? "",
+    seoDescEn: product.seoDescEn ?? "",
+    seoNoIndex: product.seoNoIndex,
   };
 
   return (

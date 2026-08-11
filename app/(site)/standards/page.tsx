@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
+import { CmsPageOrPlaceholder } from "@/components/site/CmsPageOrPlaceholder";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "มาตรฐานผู้ผลิต",
@@ -8,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function StandardsPage() {
-  return <PlaceholderPage title="มาตรฐานผู้ผลิต" />;
+  return <CmsPageOrPlaceholder slug="standards" title="มาตรฐานผู้ผลิต" />;
 }

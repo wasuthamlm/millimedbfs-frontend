@@ -25,6 +25,11 @@ const postSchema = z.object({
   categoryId: z.string().optional().or(z.literal("")),
   featured: z.boolean().optional(),
   coverImageUrl: z.string().url().optional().or(z.literal("")),
+  seoTitle: z.string().max(70).optional().or(z.literal("")),
+  seoDesc: z.string().max(200).optional().or(z.literal("")),
+  seoTitleEn: z.string().max(70).optional().or(z.literal("")),
+  seoDescEn: z.string().max(200).optional().or(z.literal("")),
+  seoNoIndex: z.boolean().optional(),
 });
 
 export type PostFormInput = z.infer<typeof postSchema>;
@@ -88,6 +93,11 @@ export async function createPost(input: PostFormInput): Promise<PostActionResult
         featured: data.featured ?? false,
         coverImageId,
         publishedAt: data.status === "PUBLISHED" ? new Date() : null,
+        seoTitle: data.seoTitle || null,
+        seoDesc: data.seoDesc || null,
+        seoTitleEn: data.seoTitleEn || null,
+        seoDescEn: data.seoDescEn || null,
+        seoNoIndex: data.seoNoIndex ?? false,
       },
     });
 
@@ -141,6 +151,11 @@ export async function updatePost(id: string, input: PostFormInput): Promise<Post
         featured: data.featured ?? false,
         coverImageId,
         publishedAt,
+        seoTitle: data.seoTitle || null,
+        seoDesc: data.seoDesc || null,
+        seoTitleEn: data.seoTitleEn || null,
+        seoDescEn: data.seoDescEn || null,
+        seoNoIndex: data.seoNoIndex ?? false,
       },
     });
 

@@ -105,6 +105,11 @@ model Post {
   publishedAt     DateTime?
   authorId        String?
   author          User?            @relation("PostAuthor", fields: [authorId], references: [id])
+  seoTitle        String?
+  seoDesc         String?
+  seoTitleEn      String?
+  seoDescEn       String?
+  seoNoIndex      Boolean          @default(false)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -134,6 +139,11 @@ model Product {
   image         Media?           @relation(fields: [imageId], references: [id])
   categoryId    String?
   category      ProductCategory? @relation(fields: [categoryId], references: [id])
+  seoTitle      String?
+  seoDesc       String?
+  seoTitleEn    String?
+  seoDescEn     String?
+  seoNoIndex    Boolean          @default(false)
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 }
@@ -169,14 +179,17 @@ enum PageStatus {
 }
 
 model Page {
-  id       String     @id @default(uuid())
-  slug     String     @unique
-  titleTh  String
-  titleEn  String?
-  status   PageStatus @default(DRAFT)
-  seoTitle String?
-  seoDesc  String?
-  archived Boolean    @default(false)
+  id         String     @id @default(uuid())
+  slug       String     @unique
+  titleTh    String
+  titleEn    String?
+  status     PageStatus @default(DRAFT)
+  seoTitle   String?
+  seoDesc    String?
+  seoTitleEn String?
+  seoDescEn  String?
+  seoNoIndex Boolean    @default(false)
+  archived   Boolean    @default(false)
 
   sections  PageSection[]
   createdAt DateTime      @default(now())
@@ -235,13 +248,18 @@ model NavLink {
 // ───────────────────────── Site chrome: banners / footer / popup / widgets ─────────────────────────
 
 model Banner {
-  id      String  @id @default(uuid())
-  titleTh String
-  imageId String?
-  image   Media?  @relation(fields: [imageId], references: [id])
-  link    String?
-  order   Int
-  active  Boolean @default(true)
+  id        String  @id @default(uuid())
+  titleTh   String
+  titleEn   String?
+  altTextTh String?
+  altTextEn String?
+  captionTh String?
+  captionEn String?
+  imageId   String?
+  image     Media?  @relation(fields: [imageId], references: [id])
+  link      String?
+  order     Int
+  active    Boolean @default(true)
 }
 
 model FooterColumn {

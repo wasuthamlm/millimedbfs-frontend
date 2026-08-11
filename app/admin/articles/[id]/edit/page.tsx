@@ -32,6 +32,11 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
     categoryId: post.categoryId ?? "",
     featured: post.featured,
     coverImageUrl: post.coverImage?.url ?? "",
+    seoTitle: post.seoTitle ?? "",
+    seoDesc: post.seoDesc ?? "",
+    seoTitleEn: post.seoTitleEn ?? "",
+    seoDescEn: post.seoDescEn ?? "",
+    seoNoIndex: post.seoNoIndex,
   };
 
   return (

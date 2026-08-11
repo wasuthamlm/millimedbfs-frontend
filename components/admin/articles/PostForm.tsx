@@ -1,11 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SaveButton } from "@/components/admin/SaveButton";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { SeoScorePanel } from "@/components/admin/seo/SeoScorePanel";
 import { TrashIcon } from "@/components/ui/admin-icons";
 import { slugify } from "@/lib/slugify";
+import { calculateSeoAeoGeo, postToScoreInput } from "@/lib/seo-score";
+import { SITE_URL } from "@/lib/site";
 import {
   createPost,
   deletePost,
@@ -27,6 +30,11 @@ export type InitialPost = {
   categoryId: string;
   featured: boolean;
   coverImageUrl: string;
+  seoTitle: string;
+  seoDesc: string;
+  seoTitleEn: string;
+  seoDescEn: string;
+  seoNoIndex: boolean;
 };
 
 export type ArticleCategoryOption = { id: string; nameTh: string };
@@ -45,6 +53,11 @@ const EMPTY_POST: InitialPost = {
   categoryId: "",
   featured: false,
   coverImageUrl: "",
+  seoTitle: "",
+  seoDesc: "",
+  seoTitleEn: "",
+  seoDescEn: "",
+  seoNoIndex: false,
 };
 
 const inputClass =
@@ -68,6 +81,38 @@ export function PostForm({
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const seoResult = useMemo(
+    () =>
+      calculateSeoAeoGeo(
+        postToScoreInput({
+          titleTh: form.titleTh,
+          titleEn: form.titleEn,
+          seoTitle: form.seoTitle,
+          seoTitleEn: form.seoTitleEn,
+          seoDesc: form.seoDesc,
+          seoDescEn: form.seoDescEn,
+          excerptTh: form.excerptTh,
+          bodyTh: form.bodyTh,
+          slug: form.slug,
+          hasCoverImage: Boolean(form.coverImageUrl),
+        }),
+      ),
+    [
+      form.titleTh,
+      form.titleEn,
+      form.seoTitle,
+      form.seoTitleEn,
+      form.seoDesc,
+      form.seoDescEn,
+      form.excerptTh,
+      form.bodyTh,
+      form.slug,
+      form.coverImageUrl,
+    ],
+  );
+
+  const canonicalPath = form.kind === "ARTICLE" ? "articles" : "news";
+
   const handleTitleChange = (value: string) => {
     update("titleTh", value);
     if (!slugTouched) {
@@ -90,6 +135,11 @@ export function PostForm({
       categoryId: form.categoryId,
       featured: form.featured,
       coverImageUrl: form.coverImageUrl,
+      seoTitle: form.seoTitle,
+      seoDesc: form.seoDesc,
+      seoTitleEn: form.seoTitleEn,
+      seoDescEn: form.seoDescEn,
+      seoNoIndex: form.seoNoIndex,
     };
 
     const result = isEdit ? await updatePost(initialPost!.id, input) : await createPost(input);
@@ -250,6 +300,73 @@ export function PostForm({
             value={form.bodyEn}
             onChange={(e) => update("bodyEn", e.target.value)}
           />
+        </div>
+      </div>
+
+      <SeoScorePanel result={seoResult} />
+
+      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:grid-cols-2">
+        <h3 className="sm:col-span-2 text-sm font-semibold text-slate-800">SEO</h3>
+        <div>
+          <label className={labelClass}>Meta Title (TH)</label>
+          <input
+            className={inputClass}
+            value={form.seoTitle}
+            onChange={(e) => update("seoTitle", e.target.value)}
+            maxLength={70}
+            placeholder={form.titleTh || "ค่าเริ่มต้น: ใช้ชื่อเรื่อง"}
+          />
+          <p className="mt-1 text-xs text-slate-400">{form.seoTitle.length}/70 ตัวอักษร</p>
+        </div>
+        <div>
+          <label className={labelClass}>Meta Title (EN)</label>
+          <input
+            className={inputClass}
+            value={form.seoTitleEn}
+            onChange={(e) => update("seoTitleEn", e.target.value)}
+            maxLength={70}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Meta Description (TH)</label>
+          <textarea
+            className={inputClass}
+            rows={3}
+            value={form.seoDesc}
+            onChange={(e) => update("seoDesc", e.target.value)}
+            maxLength={200}
+            placeholder={form.excerptTh || "ค่าเริ่มต้น: ใช้สรุปย่อ"}
+          />
+          <p className="mt-1 text-xs text-slate-400">{form.seoDesc.length}/200 ตัวอักษร</p>
+        </div>
+        <div>
+          <label className={labelClass}>Meta Description (EN)</label>
+          <textarea
+            className={inputClass}
+            rows={3}
+            value={form.seoDescEn}
+            onChange={(e) => update("seoDescEn", e.target.value)}
+            maxLength={200}
+          />
+        </div>
+
+        <div className="sm:col-span-2 flex flex-col gap-2 border-t border-slate-100 pt-4">
+          <p className="text-xs font-semibold text-slate-600">Advanced SEO</p>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.seoNoIndex}
+              onChange={(e) => update("seoNoIndex", e.target.checked)}
+            />
+            ไม่ให้ Google จัดทำดัชนี (noindex)
+          </label>
+        </div>
+
+        <div className="sm:col-span-2 border-t border-slate-100 pt-4">
+          <p className="mb-1 text-xs font-medium text-slate-500">Canonical URL</p>
+          <p className="truncate text-sm text-slate-600">
+            {`${SITE_URL}/${canonicalPath}/${form.slug || "…"}`}
+          </p>
         </div>
       </div>
 
