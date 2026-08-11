@@ -26,21 +26,18 @@ export type HeaderConfig = {
   menuFontSize: string;
 };
 
-// Matches the Footer's fallback navy (var(--brand-navy-dark), #0d1a4a) so the
-// header and footer read as the same solid color when no admin header theme
-// has been configured yet.
 const DEFAULT_CONFIG: HeaderConfig = {
   layout: "logo-left-menu-center",
   height: "standard",
   shadow: "none",
   position: "fixed-top",
-  bgColor: "#0d1a4a",
-  textColor: "#ffffff",
-  hoverBgColor: "rgba(255,255,255,0.12)",
-  hoverTextColor: "#ffffff",
-  activeBgColor: "rgba(255,255,255,0.18)",
+  bgColor: "#ffffff",
+  textColor: "#334155",
+  hoverBgColor: "#f1f5f9",
+  hoverTextColor: "#16296b",
+  activeBgColor: "#16296b",
   activeTextColor: "#ffffff",
-  iconTextColor: "#ffffff",
+  iconTextColor: "#16296b",
   logoTextTh: null,
   menuWrap: "single-line",
   menuFontSize: "normal",
@@ -80,16 +77,29 @@ export function Navbar({
     >
       <div className="mx-auto flex h-full w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <Image
-            src={logoUrl || "/logo.svg"}
-            alt={siteName || "Millimed BFS"}
-            width={36}
-            height={36}
-            unoptimized={!!logoUrl}
-          />
-          <span className="text-lg font-bold" style={{ color: config.iconTextColor }}>
-            {config.logoTextTh || siteName || "Millimed BFS"}
-          </span>
+          {logoUrl ? (
+            // Custom uploaded logo is a full wordmark (icon + "Millimed BFS" baked
+            // in), so it replaces the icon+text pair below instead of sitting next
+            // to it — otherwise the name would render twice. The source file has a
+            // lot of empty margin above/below the mark, so it's cropped tighter by
+            // scaling the image up inside an overflow-hidden box.
+            <div className="relative h-14 w-36 overflow-hidden sm:h-16 sm:w-40">
+              <Image
+                src={logoUrl}
+                alt={siteName || "Millimed BFS"}
+                fill
+                className="scale-130 object-contain"
+                unoptimized
+              />
+            </div>
+          ) : (
+            <>
+              <Image src="/logo.svg" alt={siteName || "Millimed BFS"} width={36} height={36} />
+              <span className="text-lg font-bold" style={{ color: config.iconTextColor }}>
+                {config.logoTextTh || siteName || "Millimed BFS"}
+              </span>
+            </>
+          )}
         </Link>
 
         <nav
