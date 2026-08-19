@@ -38,6 +38,7 @@ export default async function ProductsPage() {
                   src={product.image.url}
                   alt={product.nameTh}
                   fill
+                  sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
                   className="object-cover"
                 />
               ) : (

@@ -1,11 +1,27 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/ui/Container";
 import { prisma } from "@/lib/prisma";
 import { toArticleView } from "@/lib/post-view";
 import { formatThaiDate } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { buildBreadcrumbJsonLd, buildOpenGraph, SITE_URL } from "@/lib/site";
+
+export const dynamic = "force-dynamic";
+
+// The `params.slug` the page component receives can still be percent-encoded
+// (e.g. "%E0%B8%9C..." instead of "ผิว...") even though the same param is
+// already decoded when read inside generateMetadata for the same request.
+// Decoding defensively here keeps both call sites matching the raw DB slug.
+function decodeSlug(slug: string) {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return slug;
+  }
+}
 
 async function getArticle(slug: string) {
   const post = await prisma.post.findUnique({
@@ -29,7 +45,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const slug = decodeSlug((await params).slug);
   const post = await getArticle(slug);
   if (!post) return {};
   const article = toArticleView(post);
@@ -49,7 +65,7 @@ export default async function ArticleDetailPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
+  const slug = decodeSlug((await params).slug);
   const post = await getArticle(slug);
   if (!post) notFound();
   const article = toArticleView(post);
@@ -82,11 +98,15 @@ export default async function ArticleDetailPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <div className="relative aspect-[4/3] w-full max-w-2xl overflow-hidden rounded-2xl">
+      <Link href="/articles" className="inline-flex w-fit items-center gap-1 text-sm font-medium text-brand-navy hover:text-brand-gold-dark">
+        ← กลับ
+      </Link>
+      <div className="relative aspect-[16/9] w-full max-w-2xl overflow-hidden rounded-2xl">
         <Image
           src={article.image}
           alt={article.title}
           fill
+          sizes="(min-width: 672px) 672px, 100vw"
           className="object-cover"
           priority
         />
@@ -99,9 +119,10 @@ export default async function ArticleDetailPage({
       <p className="text-sm text-slate-400">{formatThaiDate(article.publishedAt)}</p>
       <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">{article.title}</h1>
       {post.bodyTh && (
-        <p className="whitespace-pre-line text-base leading-relaxed text-slate-600">
-          {post.bodyTh}
-        </p>
+        <div
+          className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-brand-navy"
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.bodyTh) }}
+        />
       )}
     </Container>
   );

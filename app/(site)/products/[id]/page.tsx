@@ -5,6 +5,8 @@ import { Container } from "@/components/ui/Container";
 import { prisma } from "@/lib/prisma";
 import { buildBreadcrumbJsonLd, buildOpenGraph, SITE_URL } from "@/lib/site";
 
+export const dynamic = "force-dynamic";
+
 async function getProduct(id: string) {
   const product = await prisma.product.findUnique({
     where: { id },
@@ -93,6 +95,7 @@ export default async function ProductDetailPage({
             src={product.image.url}
             alt={product.nameTh}
             fill
+            sizes="(min-width: 1024px) 50vw, 100vw"
             className="object-cover"
             priority
           />

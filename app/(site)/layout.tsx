@@ -172,6 +172,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         columns={footerColumns}
         contact={footerContact}
         theme={footerConfig}
+        logoUrl={siteSettings?.siteLogo?.url}
         social={
           siteSettings
             ? {

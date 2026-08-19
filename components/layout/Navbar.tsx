@@ -88,6 +88,7 @@ export function Navbar({
                 src={logoUrl}
                 alt={siteName || "Millimed BFS"}
                 fill
+                sizes="(min-width: 640px) 160px, 144px"
                 className="scale-130 object-contain"
                 unoptimized
               />

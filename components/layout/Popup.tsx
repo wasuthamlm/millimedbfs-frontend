@@ -59,7 +59,7 @@ export function Popup({ data }: { data: PopupData | null }) {
 
   const image = (
     <div className="relative aspect-square w-full overflow-hidden rounded-xl">
-      <Image src={data.image} alt={data.titleTh} fill className="object-cover" />
+      <Image src={data.image} alt={data.titleTh} fill sizes="384px" className="object-cover" />
     </div>
   );
 

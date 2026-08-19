@@ -20,6 +20,7 @@ export function ArticleCard({ article }: { article: Article }) {
               src={article.image}
               alt={article.title}
               fill
+              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
               className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
           </div>

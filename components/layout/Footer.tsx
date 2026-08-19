@@ -39,11 +39,13 @@ export function Footer({
   contact,
   theme,
   social,
+  logoUrl,
 }: {
   columns: FooterColumnData[];
   contact: FooterContactData | null;
   theme?: FooterThemeData | null;
   social?: FooterSocialData | null;
+  logoUrl?: string | null;
 }) {
   const socialLinks = social
     ? [
@@ -81,13 +83,25 @@ export function Footer({
       <Container className={`grid gap-10 py-14 sm:grid-cols-2 ${gridColsClass}`}>
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="Millimed BFS" width={32} height={32} />
-            <span
-              className={theme ? "text-lg font-bold" : "text-lg font-bold text-white"}
-              style={theme ? { color: theme.textColor } : undefined}
-            >
-              Millimed BFS
-            </span>
+            {logoUrl ? (
+              // The uploaded logo is a wordmark on an opaque white background
+              // (no transparency), so it needs its own white pill to sit
+              // cleanly on the dark footer instead of showing a stray white
+              // box — otherwise it replaces the icon+text pair below.
+              <div className="w-fit rounded-md bg-white px-2 py-1">
+                <Image src={logoUrl} alt="Millimed BFS" width={160} height={80} unoptimized className="h-8 w-auto" />
+              </div>
+            ) : (
+              <>
+                <Image src="/logo.svg" alt="Millimed BFS" width={32} height={32} />
+                <span
+                  className={theme ? "text-lg font-bold" : "text-lg font-bold text-white"}
+                  style={theme ? { color: theme.textColor } : undefined}
+                >
+                  Millimed BFS
+                </span>
+              </>
+            )}
           </div>
           {contact?.tagline && (
             <p

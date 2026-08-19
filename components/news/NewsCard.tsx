@@ -7,7 +7,7 @@ export function NewsCard({ item }: { item: NewsItem }) {
   return (
     <div className="flex gap-4 rounded-xl border border-slate-100 p-3 transition-shadow hover:shadow-md">
       <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg sm:h-24 sm:w-32">
-        <Image src={item.image} alt={item.title} fill className="object-cover" />
+        <Image src={item.image} alt={item.title} fill sizes="(min-width: 640px) 128px, 112px" className="object-cover" />
       </div>
       <div className="flex flex-col justify-between">
         <h3 className="line-clamp-2 text-sm font-semibold text-slate-900 sm:text-base">
