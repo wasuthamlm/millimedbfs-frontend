@@ -126,6 +126,20 @@ export function SectionSettingsPanel({
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-navy"
               />
             </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-500">การจัดวางรูปกับข้อความ</label>
+              <select
+                value={section.columns === 2 ? 2 : 1}
+                onChange={(e) => onChange({ columns: Number(e.target.value) })}
+                className="w-full max-w-xs rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-navy"
+              >
+                <option value={1}>รูปด้านบน ข้อความด้านล่าง</option>
+                <option value={2}>รูปด้านซ้าย ข้อความด้านขวา (2 คอลัมน์)</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-400">
+                แบบ 2 คอลัมน์จะมีผลเมื่อใส่ URL รูปภาพไว้ และจะเรียงซ้อนกันเองบนหน้าจอมือถือ
+              </p>
+            </div>
           </>
         )}
 

@@ -74,10 +74,11 @@ export default async function PageEditorRoute({
   const navLinks: NavLink[] = navRows
     .filter((row) => !row.parentId)
     .map((row) => ({
+      id: row.id,
       label: row.labelTh,
       href: row.href,
       children: row.children.length
-        ? row.children.map((child) => ({ label: child.labelTh, href: child.href }))
+        ? row.children.map((child) => ({ id: child.id, label: child.labelTh, href: child.href }))
         : undefined,
     }));
 

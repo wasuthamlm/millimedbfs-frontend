@@ -56,10 +56,17 @@ export function MobileNav({ navLinks, iconColor }: { navLinks: NavLink[]; iconCo
               <nav className="flex flex-col gap-1">
                 {navLinks.map((link) => {
                   const active = pathname === link.href;
+                  // Dropdown-only parents have an empty href (e.g. "อาคารโรงงาน",
+                  // "มาตรฐานผู้ผลิต"), so href alone identifies neither the React key nor
+                  // which group is expanded — fall back to the label.
+                  // id is the DB row's own primary key — the only thing guaranteed unique.
+                  // Two admin-created menu items can share an href (e.g. a redundant
+                  // shortcut) or both be dropdown-only parents with href "".
+                  const key = link.id ?? link.href ?? link.label;
                   if (!link.children) {
                     return (
                       <Link
-                        key={link.href}
+                        key={key}
                         href={link.href}
                         onClick={() => setOpen(false)}
                         className={cn(
@@ -73,14 +80,12 @@ export function MobileNav({ navLinks, iconColor }: { navLinks: NavLink[]; iconCo
                       </Link>
                     );
                   }
-                  const isExpanded = expanded === link.href;
+                  const isExpanded = expanded === key;
                   return (
-                    <div key={link.href}>
+                    <div key={key}>
                       <button
                         type="button"
-                        onClick={() =>
-                          setExpanded(isExpanded ? null : link.href)
-                        }
+                        onClick={() => setExpanded(isExpanded ? null : key)}
                         className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
                       >
                         {link.label}
@@ -101,7 +106,7 @@ export function MobileNav({ navLinks, iconColor }: { navLinks: NavLink[]; iconCo
                           >
                             {link.children.map((child) => (
                               <Link
-                                key={child.href}
+                                key={child.id ?? child.href ?? child.label}
                                 href={child.href}
                                 onClick={() => setOpen(false)}
                                 className="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"

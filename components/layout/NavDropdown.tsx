@@ -76,7 +76,7 @@ export function NavDropdown({
           >
             {link.children.map((child) => (
               <Link
-                key={child.href}
+                key={child.id ?? child.href ?? child.label}
                 href={child.href}
                 className="block px-4 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-brand-navy"
               >

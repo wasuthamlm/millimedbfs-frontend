@@ -76,34 +76,71 @@ export function PageSectionsRenderer({
             );
           case "COMPANY_INTRO":
           case "CUSTOM":
-          default:
+          default: {
             if (!section.titleTh && !config.bodyTh && !config.imageUrl) return null;
+
+            // Image beside the text (e.g. the executive profiles on /about) is opt-in per
+            // block via the "จำนวนคอลัมน์" setting in the page builder. Anything else keeps
+            // the original stacked layout: heading, then image, then body.
+            const sideBySide = section.columns === 2 && Boolean(config.imageUrl);
+
+            const heading = section.titleTh ? (
+              <h2
+                className={`mb-4 text-2xl font-bold text-slate-900 ${sideBySide ? "text-left" : "text-center"}`}
+              >
+                {section.titleTh}
+              </h2>
+            ) : null;
+
+            const image = config.imageUrl ? (
+              <div
+                className={`relative w-full overflow-hidden rounded-xl bg-slate-100 ${sideBySide ? "" : "mb-4"}`}
+              >
+                <Image
+                  src={config.imageUrl}
+                  alt={section.titleTh}
+                  width={1600}
+                  height={1000}
+                  unoptimized
+                  className="h-auto w-full object-contain"
+                />
+              </div>
+            ) : null;
+
+            const body = config.bodyTh ? (
+              <BlockBodyText text={config.bodyTh} className="text-base leading-relaxed text-slate-600" />
+            ) : null;
+
+            if (sideBySide) {
+              return (
+                <div
+                  key={section.id}
+                  id={config.anchorId || undefined}
+                  className={`mx-auto max-w-5xl px-4 py-12 ${visibilityClass(section)}`}
+                >
+                  <div className="grid gap-8 md:grid-cols-2 md:items-center">
+                    {image}
+                    <div>
+                      {heading}
+                      {body}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div
                 key={section.id}
                 id={config.anchorId || undefined}
                 className={`mx-auto max-w-4xl px-4 py-12 ${visibilityClass(section)}`}
               >
-                {section.titleTh && (
-                  <h2 className="mb-4 text-center text-2xl font-bold text-slate-900">{section.titleTh}</h2>
-                )}
-                {config.imageUrl && (
-                  <div className="relative mb-4 w-full overflow-hidden rounded-xl bg-slate-100">
-                    <Image
-                      src={config.imageUrl}
-                      alt={section.titleTh}
-                      width={1600}
-                      height={1000}
-                      unoptimized
-                      className="h-auto w-full object-contain"
-                    />
-                  </div>
-                )}
-                {config.bodyTh && (
-                  <BlockBodyText text={config.bodyTh} className="text-base leading-relaxed text-slate-600" />
-                )}
+                {heading}
+                {image}
+                {body}
               </div>
             );
+          }
         }
       })}
     </>

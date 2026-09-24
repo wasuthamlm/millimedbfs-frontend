@@ -113,10 +113,16 @@ export function Navbar({
         >
           {navLinks.map((link) => {
             const active = pathname === link.href;
+            // Dropdown-only parents have an empty href (e.g. "อาคารโรงงาน", "มาตรฐานผู้ผลิต"),
+            // so href alone is not unique — fall back to the label for the React key.
+            // id is the DB row's own primary key — the only thing guaranteed unique.
+            // Two admin-created menu items can share an href (e.g. a redundant shortcut)
+            // or both be dropdown-only parents with href "", so href/label alone can collide.
+            const key = link.id ?? link.href ?? link.label;
             if (link.children) {
               return (
                 <NavDropdown
-                  key={link.href}
+                  key={key}
                   link={link}
                   active={active}
                   textColor={config.textColor}
@@ -128,7 +134,7 @@ export function Navbar({
             }
             return (
               <Link
-                key={link.href}
+                key={key}
                 href={link.href}
                 className={cn(
                   "shrink-0 whitespace-nowrap rounded-full px-4 py-2 font-medium transition-colors",

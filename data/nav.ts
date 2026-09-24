@@ -1,7 +1,12 @@
 export type NavLink = {
+  // Optional: present when built from DB rows (NavLink.id), absent for the static seed
+  // below. Two admin-created menu items can legitimately point at the same href (e.g.
+  // a redundant shortcut), so components must key on `id` when it's available rather
+  // than `href` alone — see Navbar.tsx / MobileNav.tsx / NavDropdown.tsx.
+  id?: string;
   label: string;
   href: string;
-  children?: { label: string; href: string }[];
+  children?: { id?: string; label: string; href: string }[];
 };
 
 export const navLinks: NavLink[] = [

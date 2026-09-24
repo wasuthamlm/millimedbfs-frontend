@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { FacebookIcon, InstagramIcon, YoutubeIcon, TikTokIcon, LineIcon } from "@/components/ui/social-icons";
+import { CookieSettingsLink } from "@/components/layout/CookieSettingsLink";
 
 export type FooterSocialData = {
   facebookUrl: string | null;
@@ -182,8 +183,43 @@ export function Footer({
         className={theme ? "border-t py-5" : "border-t border-white/10 py-5"}
         style={theme ? { borderColor: theme.accentColor + "33" } : undefined}
       >
-        <Container className={theme ? "text-center text-xs opacity-70" : "text-center text-xs text-white/50"}>
-          {copyright}
+        <Container
+          className={
+            theme
+              ? "flex flex-col items-center gap-2 text-center text-xs opacity-70 sm:flex-row sm:justify-between"
+              : "flex flex-col items-center gap-2 text-center text-xs text-white/50 sm:flex-row sm:justify-between"
+          }
+        >
+          <span>{copyright}</span>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/privacy-policy"
+              className={
+                theme
+                  ? "transition-colors [color:var(--footer-link)] hover:[color:var(--footer-link-hover)]"
+                  : "transition-colors hover:text-white"
+              }
+            >
+              นโยบายความเป็นส่วนตัว
+            </Link>
+            <Link
+              href="/cookie-policy"
+              className={
+                theme
+                  ? "transition-colors [color:var(--footer-link)] hover:[color:var(--footer-link-hover)]"
+                  : "transition-colors hover:text-white"
+              }
+            >
+              นโยบายการใช้คุกกี้
+            </Link>
+            <CookieSettingsLink
+              className={
+                theme
+                  ? "transition-colors [color:var(--footer-link)] hover:[color:var(--footer-link-hover)]"
+                  : "transition-colors hover:text-white"
+              }
+            />
+          </div>
         </Container>
       </div>
     </footer>
