@@ -42,7 +42,7 @@ export async function ensureMediaBucket() {
   if (!buckets.some((b) => b.name === MEDIA_BUCKET)) {
     const { error: createError } = await supabase.storage.createBucket(MEDIA_BUCKET, {
       public: true,
-      fileSizeLimit: "5MB",
+      fileSizeLimit: "50MB", // videos up to 50MB — see lib/media-rules.ts
     });
     if (createError) throw createError;
   }
