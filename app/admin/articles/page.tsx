@@ -9,9 +9,24 @@ import { PostKindCell } from "@/components/admin/articles/PostKindCell";
 import { PostCategoryCell } from "@/components/admin/articles/PostCategoryCell";
 import { PostRowMenu } from "@/components/admin/articles/PostRowMenu";
 import { SeoScoreBadge } from "@/components/admin/articles/SeoScoreBadge";
-import { calculateSeoAeoGeo, postToScoreInput } from "@/lib/seo-score";
+import { BulkActionBar, RowCheckbox, SelectAllCheckbox, SelectionProvider, type BulkAction } from "@/components/admin/list/Selection";
+import { InlineText } from "@/components/admin/list/InlineText";
+import { TrashToolbar } from "@/components/admin/list/TrashToolbar";
+import { computeContentAudit } from "@/lib/content-audit";
 import { prisma } from "@/lib/prisma";
 import { formatThaiDate } from "@/lib/utils";
+import { canDo } from "@/lib/admin-roles";
+import { getAdminRole } from "@/lib/require-admin";
+import {
+  archivePosts,
+  draftPosts,
+  emptyPostTrash,
+  publishPosts,
+  purgePosts,
+  renamePost,
+  restorePosts,
+  trashPosts,
+} from "@/app/admin/articles/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -20,12 +35,14 @@ const PAGE_SIZE = 20;
 export default async function AdminArticlesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; q?: string; kind?: string; status?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; kind?: string; status?: string; trash?: string }>;
 }) {
-  const { page: pageParam, q, kind, status } = await searchParams;
+  const { page: pageParam, q, kind, status, trash } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
+  const inTrash = trash === "1";
 
   const where: Prisma.PostWhereInput = {
+    deletedAt: inTrash ? { not: null } : null,
     ...(q
       ? {
           OR: [
@@ -36,26 +53,50 @@ export default async function AdminArticlesPage({
         }
       : {}),
     ...(kind ? { kind: kind as "ARTICLE" | "NEWS" } : {}),
-    ...(status ? { status: status as "DRAFT" | "PUBLISHED" | "ARCHIVED" } : {}),
+    ...(status && !inTrash ? { status: status as "DRAFT" | "PUBLISHED" | "ARCHIVED" } : {}),
   };
 
-  const [posts, totalArticles, publishedArticles, categories] = await Promise.all([
+  const [posts, total, publishedCount, trashCount, categories, role] = await Promise.all([
     prisma.post.findMany({
       where,
-      orderBy: { updatedAt: "desc" },
+      orderBy: inTrash ? { deletedAt: "desc" } : { updatedAt: "desc" },
       take: PAGE_SIZE,
       skip: (page - 1) * PAGE_SIZE,
+      include: { coverImage: { select: { url: true } } },
     }),
     prisma.post.count({ where }),
-    prisma.post.count({ where: { status: "PUBLISHED" } }),
+    prisma.post.count({ where: { status: "PUBLISHED", deletedAt: null } }),
+    prisma.post.count({ where: { deletedAt: { not: null } } }),
     prisma.articleCategory.findMany({
       where: { active: true },
       orderBy: [{ order: "asc" }, { nameTh: "asc" }],
       select: { id: true, nameTh: true },
     }),
+    getAdminRole(),
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(totalArticles / PAGE_SIZE));
+  const canPublish = canDo(role, "article.publish");
+  const canDelete = canDo(role, "article.delete");
+  const canEdit = canDo(role, "article.edit");
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const bulkActions: BulkAction[] = inTrash
+    ? canDelete
+      ? [
+          { label: "กู้คืน", run: restorePosts },
+          { label: "ลบถาวร", run: purgePosts, tone: "danger", confirm: "ลบถาวร {n} บทความ? ไม่สามารถกู้คืนได้" },
+        ]
+      : []
+    : [
+        ...(canPublish
+          ? [
+              { label: "เผยแพร่", run: publishPosts },
+              { label: "เป็นฉบับร่าง", run: draftPosts },
+              { label: "เก็บถาวร", run: archivePosts },
+            ]
+          : []),
+        ...(canDelete ? [{ label: "ย้ายไปถังขยะ", run: trashPosts, tone: "danger" as const, confirm: "ย้าย {n} บทความไปถังขยะ?" }] : []),
+      ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -63,7 +104,7 @@ export default async function AdminArticlesPage({
         <PageHeader
           icon={FileTextIcon}
           title="บทความ"
-          subtitle={`บทความทั้งหมด ${totalArticles} รายการ • เผยแพร่แล้ว ${publishedArticles}`}
+          subtitle={inTrash ? `ถังขยะ ${trashCount} รายการ` : `ทั้งหมด ${total} รายการ • เผยแพร่แล้ว ${publishedCount}`}
         />
         <Link
           href="/admin/articles/new"
@@ -74,84 +115,103 @@ export default async function AdminArticlesPage({
         </Link>
       </div>
 
+      <TrashToolbar basePath="/admin/articles" inTrash={inTrash} trashCount={trashCount} canDelete={canDelete} onEmpty={emptyPostTrash} />
       <ArticleFilters />
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
-              <th className="px-6 py-3 font-medium">ชื่อบทความ</th>
-              <th className="px-6 py-3 font-medium">ประเภท</th>
-              <th className="px-6 py-3 font-medium">หมวดหมู่</th>
-              <th className="px-6 py-3 font-medium">สถานะ</th>
-              <th className="px-6 py-3 font-medium">SEO</th>
-              <th className="px-6 py-3 font-medium">เผยแพร่เมื่อ</th>
-              <th className="px-6 py-3 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {posts.map((post) => {
-              const seo = calculateSeoAeoGeo(
-                postToScoreInput({
-                  titleTh: post.titleTh,
-                  titleEn: post.titleEn,
-                  seoTitle: post.seoTitle,
-                  seoTitleEn: post.seoTitleEn,
-                  seoDesc: post.seoDesc,
-                  seoDescEn: post.seoDescEn,
-                  excerptTh: post.excerptTh,
-                  bodyTh: post.bodyTh,
-                  slug: post.slug,
-                  hasCoverImage: !!post.coverImageId,
-                }),
-              );
-
-              return (
-                <tr key={post.id} className="border-b border-slate-50 last:border-0">
-                  <td className="max-w-md px-6 py-3.5">
-                    <Link
-                      href={`/admin/articles/${post.id}/edit`}
-                      className="block truncate font-medium text-slate-800 hover:text-brand-navy"
-                    >
-                      {post.titleTh}
-                    </Link>
-                    <p className="truncate text-xs text-slate-400">
-                      {post.titleEn || "+ ชื่ออังกฤษ"}
-                    </p>
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <PostKindCell id={post.id} kind={post.kind} />
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <PostCategoryCell id={post.id} categoryId={post.categoryId} categories={categories} />
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <PostStatusCell id={post.id} status={post.status} />
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <SeoScoreBadge score={seo.seo.score} />
-                  </td>
-                  <td className="px-6 py-3.5 text-slate-400">
-                    {post.publishedAt ? formatThaiDate(post.publishedAt.toISOString()) : "—"}
-                  </td>
-                  <td className="px-6 py-3.5">
-                    <PostRowMenu id={post.id} />
+      <SelectionProvider>
+        <BulkActionBar actions={bulkActions} />
+        <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
+                <th className="w-10 px-4 py-3">
+                  <SelectAllCheckbox ids={posts.map((p) => p.id)} />
+                </th>
+                <th className="px-4 py-3 font-medium">ชื่อบทความ</th>
+                <th className="px-4 py-3 font-medium">ประเภท</th>
+                <th className="px-4 py-3 font-medium">หมวดหมู่</th>
+                <th className="px-4 py-3 font-medium">สถานะ</th>
+                <th className="px-4 py-3 font-medium">SEO</th>
+                <th className="px-4 py-3 font-medium">{inTrash ? "ลบเมื่อ" : "เผยแพร่เมื่อ"}</th>
+                <th className="px-4 py-3 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {posts.map((post) => {
+                const audit = computeContentAudit({
+                  title: post.titleTh,
+                  metaTitle: post.seoTitle,
+                  metaDesc: post.seoDesc,
+                  focusKeyword: post.focusKeyword,
+                  bodyHtml: post.bodyTh,
+                  images: [post.coverImage?.url],
+                  faq: Array.isArray(post.faq) ? post.faq : [],
+                });
+                const editable = canEdit && !inTrash;
+                return (
+                  <tr key={post.id} className="border-b border-slate-50 last:border-0">
+                    <td className="px-4 py-3.5">
+                      <RowCheckbox id={post.id} label={`เลือก ${post.titleTh}`} />
+                    </td>
+                    <td className="max-w-md px-4 py-3.5">
+                      <InlineText
+                        value={post.titleTh}
+                        disabled={!editable}
+                        onSave={renamePost.bind(null, post.id, "titleTh")}
+                        className="font-medium text-slate-800"
+                      />
+                      <InlineText
+                        value={post.titleEn ?? ""}
+                        placeholder="+ ชื่ออังกฤษ"
+                        disabled={!editable}
+                        onSave={renamePost.bind(null, post.id, "titleEn")}
+                        className="text-xs text-slate-400"
+                      />
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <PostKindCell id={post.id} kind={post.kind} />
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <PostCategoryCell id={post.id} categoryId={post.categoryId} categories={categories} />
+                    </td>
+                    <td className="px-4 py-3.5">
+                      {inTrash || !canPublish ? (
+                        <span className="text-xs text-slate-500">{inTrash ? `เดิม: ${post.deletedPrevStatus ?? "-"}` : post.status}</span>
+                      ) : (
+                        <PostStatusCell id={post.id} status={post.status} />
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <SeoScoreBadge score={audit.overall} />
+                    </td>
+                    <td className="px-4 py-3.5 text-slate-400">
+                      {inTrash
+                        ? post.deletedAt
+                          ? formatThaiDate(post.deletedAt.toISOString())
+                          : "—"
+                        : post.publishedAt
+                          ? formatThaiDate(post.publishedAt.toISOString())
+                          : "—"}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <PostRowMenu id={post.id} inTrash={inTrash} canDelete={canDelete} />
+                    </td>
+                  </tr>
+                );
+              })}
+              {posts.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-6 py-8 text-center text-slate-400">
+                    {inTrash ? "ถังขยะว่างเปล่า" : "ไม่พบบทความที่ตรงกับเงื่อนไข"}
                   </td>
                 </tr>
-              );
-            })}
-            {posts.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
-                  ไม่พบบทความที่ตรงกับเงื่อนไข
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </SelectionProvider>
 
-      <Pager page={page} totalPages={totalPages} basePath="/admin/articles" extraParams={{ q, kind, status }} />
+      <Pager page={page} totalPages={totalPages} basePath="/admin/articles" extraParams={{ q, kind, status, trash }} />
     </div>
   );
 }

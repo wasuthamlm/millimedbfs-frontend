@@ -54,6 +54,7 @@ export function ArticleFilters() {
         <option value="">ทุกสถานะ</option>
         <option value="PUBLISHED">เผยแพร่แล้ว</option>
         <option value="DRAFT">ฉบับร่าง</option>
+        <option value="ARCHIVED">เก็บถาวร</option>
       </select>
     </div>
   );

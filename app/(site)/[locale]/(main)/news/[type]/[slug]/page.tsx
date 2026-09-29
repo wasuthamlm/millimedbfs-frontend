@@ -60,7 +60,16 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
   const absoluteImage = view.image.startsWith("http") ? view.image : `${SITE_URL}${view.image}`;
   const typePath = `/news/${encodeURIComponent(postTypeSlug(post))}`;
 
+  const faq = (Array.isArray(post.faq) ? post.faq : [])
+    .map((f) => f as { qTh?: string; aTh?: string })
+    .filter((f) => f.qTh && f.aTh);
+  const schemaExtra =
+    post.schemaArticle && typeof post.schemaArticle === "object" && !Array.isArray(post.schemaArticle)
+      ? (post.schemaArticle as Record<string, unknown>)
+      : {};
+
   const articleJsonLd = {
+    ...schemaExtra,
     "@context": "https://schema.org",
     "@type": post.kind === "NEWS" ? "NewsArticle" : "Article",
     headline: view.title,
@@ -69,7 +78,22 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
     dateModified: post.updatedAt.toISOString(),
     author: { "@type": "Organization", name: "Millimed BFS" },
     mainEntityOfPage: `${SITE_URL}${path}`,
+    ...(post.focusKeyword || post.secondaryKeywords.length
+      ? { keywords: [post.focusKeyword, ...post.secondaryKeywords].filter(Boolean).join(", ") }
+      : {}),
   };
+
+  const faqJsonLd = faq.length
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faq.map((f) => ({
+          "@type": "Question",
+          name: f.qTh,
+          acceptedAnswer: { "@type": "Answer", text: f.aTh },
+        })),
+      }
+    : null;
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "หน้าแรก", path: "/" },
@@ -82,6 +106,7 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
     <Container className="flex flex-col gap-6 py-14 sm:py-20">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      {faqJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />}
       <Link
         href={localePath(locale, typePath)}
         className="inline-flex w-fit items-center gap-1 text-sm font-medium text-brand-navy hover:text-brand-gold-dark"
@@ -106,6 +131,17 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
           className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-brand-navy"
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.bodyTh) }}
         />
+      )}
+      {faq.length > 0 && (
+        <section className="mt-6 flex flex-col gap-3">
+          <h2 className="text-xl font-bold text-slate-900">คำถามที่พบบ่อย</h2>
+          {faq.map((f, i) => (
+            <details key={i} className="group rounded-xl border border-slate-200 bg-white p-4 open:shadow-sm">
+              <summary className="cursor-pointer list-none font-semibold text-slate-800 marker:hidden">{f.qTh}</summary>
+              <p className="mt-2 whitespace-pre-line text-slate-600">{f.aTh}</p>
+            </details>
+          ))}
+        </section>
       )}
     </Container>
   );
