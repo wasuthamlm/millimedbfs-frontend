@@ -8,14 +8,16 @@ import { StatusSelectPill } from "@/components/admin/StatusSelectPill";
 const STYLES: Record<string, string> = {
   DRAFT: "bg-amber-50 text-amber-700",
   PUBLISHED: "bg-emerald-50 text-emerald-700",
+  ARCHIVED: "bg-slate-100 text-slate-600",
 };
 
 const OPTIONS = [
   { value: "DRAFT" as const, label: "draft" },
   { value: "PUBLISHED" as const, label: "published" },
+  { value: "ARCHIVED" as const, label: "archived" },
 ];
 
-export function PostStatusCell({ id, status }: { id: string; status: "DRAFT" | "PUBLISHED" }) {
+export function PostStatusCell({ id, status }: { id: string; status: "DRAFT" | "PUBLISHED" | "ARCHIVED" }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 

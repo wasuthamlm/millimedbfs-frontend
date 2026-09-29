@@ -15,6 +15,21 @@ const TYPE_FROM_DB: Record<PrismaSectionType, SectionType> = {
   LATEST_NEWS: "latest-news",
   ARTICLES: "articles",
   CUSTOM: "articles",
+  // Page-builder types get their own editors in the page-builder phase; until
+  // then they show up as generic company-intro blocks.
+  TEXT: "company-intro",
+  COLUMNS: "company-intro",
+  TEXT_IMAGE: "company-intro",
+  VIDEO: "company-intro",
+  GALLERY: "company-intro",
+  CTA: "cta-bar",
+  LAYOUT: "company-intro",
+  DATA_PRODUCTS: "company-intro",
+  DATA_ARTICLES: "articles",
+  DOWNLOAD: "company-intro",
+  CONTACT_INFO: "company-intro",
+  ABOUT_TEASER: "company-intro",
+  YOUTUBE: "company-intro",
 };
 
 export const dynamic = "force-dynamic";

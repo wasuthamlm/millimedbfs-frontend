@@ -83,35 +83,59 @@ enum PostKind {
 enum PostStatus {
   DRAFT
   PUBLISHED
+  ARCHIVED
+}
+
+// Draft/published flag for entities that only need two states
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
 }
 
 model Post {
-  id              String           @id @default(uuid())
-  slug            String           @unique
-  kind            PostKind
-  status          PostStatus       @default(DRAFT)
-  titleTh         String
-  titleEn         String?
-  excerptTh       String?
-  excerptEn       String?
-  bodyTh          String?
-  bodyEn          String?
-  coverImageId    String?
-  coverImage      Media?           @relation(fields: [coverImageId], references: [id])
-  category        String?
-  categoryId      String?
-  articleCategory ArticleCategory? @relation(fields: [categoryId], references: [id])
-  featured        Boolean          @default(false)
-  publishedAt     DateTime?
-  authorId        String?
-  author          User?            @relation("PostAuthor", fields: [authorId], references: [id])
-  seoTitle        String?
-  seoDesc         String?
-  seoTitleEn      String?
-  seoDescEn       String?
-  seoNoIndex      Boolean          @default(false)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id                String           @id @default(uuid())
+  slug              String           @unique
+  kind              PostKind
+  status            PostStatus       @default(DRAFT)
+  titleTh           String
+  titleEn           String?
+  excerptTh         String?
+  excerptEn         String?
+  bodyTh            String?
+  bodyEn            String?
+  coverImageId      String?
+  coverImage        Media?           @relation(fields: [coverImageId], references: [id])
+  category          String?
+  categoryId        String?
+  articleCategory   ArticleCategory? @relation(fields: [categoryId], references: [id])
+  featured          Boolean          @default(false)
+  publishedAt       DateTime?
+  authorId          String?
+  author            User?            @relation("PostAuthor", fields: [authorId], references: [id])
+  seoTitle          String?
+  seoDesc           String?
+  seoTitleEn        String?
+  seoDescEn         String?
+  seoNoIndex        Boolean          @default(false)
+  // SEO / AEO / GEO extras (ported from the legacy Article entity)
+  focusKeyword      String?
+  secondaryKeywords String[]         @default([])
+  ogTitle           String?
+  ogTitleEn         String?
+  ogDesc            String?
+  ogDescEn          String?
+  ogImageUrl        String?
+  canonicalUrl      String?
+  faq               Json? // [{ qTh, aTh, qEn, aEn }]
+  schemaArticle     Json?
+  marketingEligible Boolean          @default(false)
+  relatedPostIds    String[]         @default([])
+  relatedProductIds String[]         @default([])
+  // Trash: set when moved to trash; deletedPrevStatus restores the status on undo
+  deletedAt         DateTime?
+  deletedPrevStatus String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   @@index([kind, status, publishedAt])
 }
@@ -125,50 +149,92 @@ enum ProductStatus {
 }
 
 model Product {
-  id            String           @id @default(uuid())
-  sku           String           @unique
-  nameTh        String
-  nameEn        String?
-  descriptionTh String?
-  descriptionEn String?
-  status        ProductStatus    @default(DRAFT)
-  price         Float?
-  featured      Boolean          @default(false)
-  bestSeller    Boolean          @default(false)
-  imageId       String?
-  image         Media?           @relation(fields: [imageId], references: [id])
-  categoryId    String?
-  category      ProductCategory? @relation(fields: [categoryId], references: [id])
-  seoTitle      String?
-  seoDesc       String?
-  seoTitleEn    String?
-  seoDescEn     String?
-  seoNoIndex    Boolean          @default(false)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id                String           @id @default(uuid())
+  sku               String           @unique
+  // URL slug for /products/:category/:slug — backfilled from sku (the importer stored the Base44 slug there)
+  slug              String?          @unique
+  nameTh            String
+  nameEn            String?
+  descriptionTh     String?
+  descriptionEn     String?
+  status            ProductStatus    @default(DRAFT)
+  price             Float?
+  featured          Boolean          @default(false)
+  bestSeller        Boolean          @default(false)
+  imageId           String?
+  image             Media?           @relation(fields: [imageId], references: [id])
+  categoryId        String?
+  category          ProductCategory? @relation(fields: [categoryId], references: [id])
+  subCategoryId     String?
+  subCategory       ProductCategory? @relation("ProductSubCategory", fields: [subCategoryId], references: [id])
+  unit              String?
+  shortDescTh       String?
+  shortDescEn       String?
+  order             Int              @default(0)
+  gallery           ProductImage[]
+  seoTitle          String?
+  seoDesc           String?
+  seoTitleEn        String?
+  seoDescEn         String?
+  seoNoIndex        Boolean          @default(false)
+  focusKeyword      String?
+  secondaryKeywords String[]         @default([])
+  ogTitle           String?
+  ogTitleEn         String?
+  ogDesc            String?
+  ogDescEn          String?
+  ogImageUrl        String?
+  canonicalUrl      String?
+  marketingEligible Boolean          @default(false)
+  deletedAt         DateTime?
+  deletedPrevStatus String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+// Ordered product gallery (the main image stays on Product.imageId)
+model ProductImage {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  order     Int     @default(0)
+
+  @@index([productId, order])
 }
 
 model ProductCategory {
-  id       String            @id @default(uuid())
-  nameTh   String
-  nameEn   String?
-  slug     String            @unique
-  order    Int               @default(0)
-  active   Boolean           @default(true)
-  parentId String?
-  parent   ProductCategory?  @relation("ProductCategoryChildren", fields: [parentId], references: [id], onDelete: Cascade)
-  children ProductCategory[] @relation("ProductCategoryChildren")
-  products Product[]
+  id                  String            @id @default(uuid())
+  nameTh              String
+  nameEn              String?
+  slug                String            @unique
+  order               Int               @default(0)
+  active              Boolean           @default(true)
+  parentId            String?
+  parent              ProductCategory?  @relation("ProductCategoryChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children            ProductCategory[] @relation("ProductCategoryChildren")
+  products            Product[]
+  subCategoryProducts Product[]         @relation("ProductSubCategory")
+  descriptionTh       String?
+  descriptionEn       String?
+  status              PublishStatus     @default(PUBLISHED)
 }
 
 model ArticleCategory {
-  id     String  @id @default(uuid())
-  nameTh String
-  nameEn String?
-  slug   String  @unique
-  order  Int     @default(0)
-  active Boolean @default(true)
-  posts  Post[]
+  id            String            @id @default(uuid())
+  nameTh        String
+  nameEn        String?
+  slug          String            @unique
+  order         Int               @default(0)
+  active        Boolean           @default(true)
+  posts         Post[]
+  descriptionTh String?
+  descriptionEn String?
+  status        PublishStatus     @default(PUBLISHED)
+  parentId      String?
+  parent        ArticleCategory?  @relation("ArticleCategoryChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children      ArticleCategory[] @relation("ArticleCategoryChildren")
 }
 
 // ───────────────────────── Pages / page builder ─────────────────────────
@@ -179,17 +245,29 @@ enum PageStatus {
 }
 
 model Page {
-  id         String     @id @default(uuid())
-  slug       String     @unique
-  titleTh    String
-  titleEn    String?
-  status     PageStatus @default(DRAFT)
-  seoTitle   String?
-  seoDesc    String?
-  seoTitleEn String?
-  seoDescEn  String?
-  seoNoIndex Boolean    @default(false)
-  archived   Boolean    @default(false)
+  id                String     @id @default(uuid())
+  slug              String     @unique
+  titleTh           String
+  titleEn           String?
+  status            PageStatus @default(DRAFT)
+  seoTitle          String?
+  seoDesc           String?
+  seoTitleEn        String?
+  seoDescEn         String?
+  seoNoIndex        Boolean    @default(false)
+  archived          Boolean    @default(false)
+  // Page header band override: null = site default, "none" hides it
+  heroStyle         String?
+  heroAlignment     String?
+  ogTitle           String?
+  ogTitleEn         String?
+  ogDesc            String?
+  ogDescEn          String?
+  ogImageUrl        String?
+  canonicalUrl      String?
+  schemaCustom      Json?
+  marketingEligible Boolean    @default(false)
+  deletedAt         DateTime?
 
   sections  PageSection[]
   createdAt DateTime      @default(now())
@@ -203,25 +281,45 @@ enum SectionType {
   LATEST_NEWS
   ARTICLES
   CUSTOM
+  // Page-builder elements ported from the legacy site (config holds the per-type fields)
+  TEXT
+  COLUMNS
+  TEXT_IMAGE
+  VIDEO
+  GALLERY
+  CTA
+  LAYOUT
+  DATA_PRODUCTS
+  DATA_ARTICLES
+  DOWNLOAD
+  CONTACT_INFO
+  ABOUT_TEASER
+  YOUTUBE
 }
 
+// Belongs to either a Page or a LandingPage (exactly one of pageId / landingPageId is set)
 model PageSection {
-  id             String      @id @default(uuid())
-  pageId         String
-  page           Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  pageId         String?
+  page           Page?        @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  landingPageId  String?
+  landingPage    LandingPage? @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+  customLabel    String?
+  bodyEn         String?
   order          Int
   type           SectionType
   titleTh        String
   titleEn        String?
-  visibleDesktop Boolean     @default(true)
-  visibleTablet  Boolean     @default(true)
-  visibleMobile  Boolean     @default(true)
+  visibleDesktop Boolean      @default(true)
+  visibleTablet  Boolean      @default(true)
+  visibleMobile  Boolean      @default(true)
   columns        Int?
   itemsToShow    Int?
   // per-type variable config (e.g. sourceLabel, category filter) — validated with Zod per SectionType on write
   config         Json?
 
   @@index([pageId, order])
+  @@index([landingPageId, order])
 }
 
 // ───────────────────────── Navigation ─────────────────────────
@@ -232,13 +330,14 @@ enum NavPlacement {
 }
 
 model NavLink {
-  id        String       @id @default(uuid())
-  labelTh   String
-  labelEn   String?
-  href      String
-  order     Int
-  active    Boolean      @default(true)
-  placement NavPlacement @default(HEADER)
+  id           String       @id @default(uuid())
+  labelTh      String
+  labelEn      String?
+  href         String
+  order        Int
+  active       Boolean      @default(true)
+  placement    NavPlacement @default(HEADER)
+  openInNewTab Boolean      @default(false)
 
   parentId String?
   parent   NavLink?  @relation("NavChildren", fields: [parentId], references: [id], onDelete: Cascade)
@@ -260,6 +359,10 @@ model Banner {
   link      String?
   order     Int
   active    Boolean @default(true)
+  // "image" | "video" (uploaded file) | "youtube" | "vimeo"
+  mediaType String  @default("image")
+  videoUrl  String?
+  posterUrl String?
 }
 
 model FooterColumn {
@@ -319,13 +422,52 @@ model PopupConfig {
   endDate   DateTime?
 }
 
+// Multiple popups (replaces the PopupConfig singleton, which is kept until the admin UI moves over)
+model Popup {
+  id            String        @id @default(uuid())
+  titleTh       String?
+  titleEn       String?
+  bodyTh        String?
+  bodyEn        String?
+  imageUrl      String?
+  buttonLabelTh String?
+  buttonLabelEn String?
+  link          String?
+  openInNewTab  Boolean       @default(false)
+  layout        String        @default("image-top") // image-top | image-left | image-only | text-only
+  animation     String        @default("zoom") // fade | zoom | slide-up | slide-down | bounce
+  size          String        @default("md") // sm | md | lg
+  delaySeconds  Int           @default(1)
+  frequency     String        @default("once_per_session") // always | once_per_session | once_per_day
+  homeOnly      Boolean       @default(true)
+  status        PublishStatus @default(DRAFT)
+  active        Boolean       @default(true)
+  order         Int           @default(0)
+  startDate     DateTime?
+  endDate       DateTime?
+  deletedAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+// System toggles (type = null, fixed key) and custom floating buttons (type set)
 model Widget {
-  id          String  @id @default(uuid())
-  key         String  @unique
-  name        String
-  description String?
-  enabled     Boolean @default(false)
-  link        String?
+  id           String  @id @default(uuid())
+  key          String  @unique
+  name         String
+  description  String?
+  enabled      Boolean @default(false)
+  link         String?
+  type         String? // line | phone | signup | login | custom
+  labelTh      String?
+  labelEn      String?
+  icon         String?
+  phone        String?
+  position     String  @default("bottom-right") // bottom-right | bottom-left | middle-right | middle-left
+  design       String  @default("pill") // pill | circle | square | minimal
+  color        String  @default("#1B5E4B")
+  openInNewTab Boolean @default(true)
+  order        Int     @default(0)
 }
 
 // Singleton row (id = "singleton")
@@ -359,17 +501,18 @@ model SiteHeaderConfig {
 
 // Singleton row (id = "singleton")
 model SiteBannerConfig {
-  id                String   @id @default(uuid())
-  transitionEffect  String   @default("fade")
-  direction         String   @default("ltr")
-  transitionSpeedMs Int      @default(700)
-  displayDurationMs Int      @default(5000)
-  autoplay          Boolean  @default(true)
-  loop              Boolean  @default(true)
-  pauseOnHover      Boolean  @default(true)
-  showArrows        Boolean  @default(true)
-  showDots          Boolean  @default(true)
-  updatedAt         DateTime @updatedAt
+  id                String        @id @default(uuid())
+  transitionEffect  String        @default("fade")
+  direction         String        @default("ltr")
+  transitionSpeedMs Int           @default(700)
+  displayDurationMs Int           @default(5000)
+  autoplay          Boolean       @default(true)
+  loop              Boolean       @default(true)
+  pauseOnHover      Boolean       @default(true)
+  showArrows        Boolean       @default(true)
+  showDots          Boolean       @default(true)
+  status            PublishStatus @default(PUBLISHED)
+  updatedAt         DateTime      @updatedAt
 }
 
 // ───────────────────────── New entities: contact + media ─────────────────────────
@@ -381,14 +524,15 @@ enum MessageStatus {
 }
 
 model ContactMessage {
-  id        String        @id @default(uuid())
-  name      String
-  email     String
-  phone     String?
-  subject   String?
-  body      String
-  status    MessageStatus @default(NEW)
-  createdAt DateTime      @default(now())
+  id           String        @id @default(uuid())
+  name         String
+  email        String?
+  phone        String?
+  subject      String?
+  body         String
+  customFields Json?
+  status       MessageStatus @default(NEW)
+  createdAt    DateTime      @default(now())
 }
 
 model Media {
@@ -403,6 +547,11 @@ model Media {
   uploadedBy   User?        @relation(fields: [uploadedById], references: [id])
   folderId     String?
   folder       MediaFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  altTh        String?
+  altEn        String?
+  captionTh    String?
+  captionEn    String?
+  source       String?
   createdAt    DateTime     @default(now())
 
   posts    Post[]
@@ -461,12 +610,16 @@ model GlobalTheme {
   colorBackground   String   @default("#dfedfb")
   colorText         String   @default("#121212")
   buttonRadius      String   @default("soft-sm")
+  // Any Google Fonts family name; overrides fontHeader / fontBody when set
+  fontHeaderCustom  String?
+  fontBodyCustom    String?
   updatedAt         DateTime @updatedAt
 }
 
 enum AiProvider {
   OPENAI
   GEMINI
+  ANTHROPIC
 }
 
 // Singleton row (id = "singleton") — which AI provider/model the Translation Status page uses
@@ -480,6 +633,7 @@ model AiSettings {
 model MediaFolder {
   id        String   @id @default(uuid())
   name      String   @unique
+  order     Int      @default(0)
   createdAt DateTime @default(now())
 
   media Media[]
@@ -490,6 +644,16 @@ model MediaFolder {
 enum TranslatableEntity {
   ARTICLE
   PRODUCT
+  PAGE
+  PAGE_SECTION
+  NAV_LINK
+  POPUP
+  WIDGET
+  LANDING_PAGE
+  PRODUCT_CATEGORY
+  ARTICLE_CATEGORY
+  BANNER
+  FOOTER
 }
 
 model Translation {
@@ -503,4 +667,89 @@ model Translation {
 
   @@unique([entityType, entityId, locale, field])
   @@index([entityType, locale])
+}
+
+// ───────────────────────── Legacy-parity additions ─────────────────────────
+
+// Enabled site languages (th is the default and is served without a URL prefix)
+model Language {
+  code       String  @id
+  labelLocal String
+  enabled    Boolean @default(true)
+  order      Int     @default(0)
+}
+
+// Key/value JSON config blobs: cookie_consent_config, page_hero_config,
+// contact_config, contact_marketing_eligible, footer_blocks
+model SiteConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// Admin audit trail. The actor is denormalized so the log survives user deletion.
+model ActivityLog {
+  id          String   @id @default(uuid())
+  actorId     String?
+  actorEmail  String
+  actorName   String?
+  action      String // create | update | delete | publish | unpublish | trash | restore | ...
+  targetType  String
+  targetId    String?
+  targetLabel String?
+  details     Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+// Pre-granted admin roles by email, applied when that person registers
+model AdminAccess {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Standalone campaign pages served at /lp/:slug without the main site chrome
+model LandingPage {
+  id                String        @id @default(uuid())
+  slug              String        @unique
+  titleTh           String
+  titleEn           String?
+  coverImageUrl     String?
+  status            PublishStatus @default(DRAFT)
+  primaryColor      String        @default("#032f87")
+  accentColor       String        @default("#B8860B")
+  bgColor           String        @default("#FFFFFF")
+  textColor         String        @default("#121212")
+  useSiteColors     Boolean       @default(true)
+  headerConfig      Json?
+  footerConfig      Json?
+  widgetConfig      Json?
+  seoTitle          String?
+  seoTitleEn        String?
+  seoDesc           String?
+  seoDescEn         String?
+  ogTitle           String?
+  ogTitleEn         String?
+  ogDesc            String?
+  ogDescEn          String?
+  ogImageUrl        String?
+  focusKeyword      String?
+  canonicalUrl      String?
+  noIndex           Boolean       @default(false)
+  faq               Json?
+  geoPlaceName      String?
+  geoAddress        String?
+  geoLatitude       String?
+  geoLongitude      String?
+  marketingEligible Boolean       @default(false)
+  deletedAt         DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  sections PageSection[]
 }

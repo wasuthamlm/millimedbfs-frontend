@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { Prisma } from "@/lib/generated/prisma/client";
+import { Prisma, type PostStatus } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { canDo } from "@/lib/admin-roles";
@@ -10,7 +10,7 @@ import { getOrCreateMedia } from "@/lib/media";
 
 const postSchema = z.object({
   kind: z.enum(["ARTICLE", "NEWS"]),
-  status: z.enum(["DRAFT", "PUBLISHED"]),
+  status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]),
   slug: z
     .string()
     .min(1, "จำเป็นต้องระบุสลัก")
@@ -191,7 +191,7 @@ export async function deletePost(id: string): Promise<{ error?: string }> {
   return {};
 }
 
-export async function setPostStatus(id: string, status: "DRAFT" | "PUBLISHED"): Promise<{ error?: string }> {
+export async function setPostStatus(id: string, status: PostStatus): Promise<{ error?: string }> {
   await requirePermission("article.publish");
 
   const existing = await prisma.post.findUnique({ where: { id } });

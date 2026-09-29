@@ -6,7 +6,8 @@ import { requirePermission } from "@/lib/require-admin";
 import { translateFields } from "@/lib/translate";
 import type { TranslatableEntity } from "@/lib/generated/prisma/client";
 
-const CONTENT_FIELDS: Record<TranslatableEntity, readonly string[]> = {
+// Entities not listed here aren't bulk-translatable from this page yet.
+const CONTENT_FIELDS: Partial<Record<TranslatableEntity, readonly string[]>> = {
   ARTICLE: ["title", "excerpt", "body"],
   PRODUCT: ["name", "description"],
 };
@@ -50,6 +51,7 @@ export async function translateItem(
   await requirePermission("translation.edit");
 
   const fieldKeys = CONTENT_FIELDS[entityType];
+  if (!fieldKeys) return { ok: false, error: "ยังไม่รองรับการแปลข้อมูลประเภทนี้" };
   const source = await getSourceFields(entityType, entityId);
   if (!source) return { ok: false, error: "ไม่พบข้อมูลต้นฉบับ" };
 

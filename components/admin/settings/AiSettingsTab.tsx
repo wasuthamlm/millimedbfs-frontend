@@ -27,6 +27,8 @@ const MODEL_OPTIONS: Record<AiProvider, { value: string; label: string }[]> = {
     { value: "gpt-4o-mini", label: "gpt-4o-mini" },
     { value: "gpt-4-turbo", label: "gpt-4-turbo" },
   ],
+  // Not selectable in PROVIDERS until lib/translate.ts gains an Anthropic adapter.
+  ANTHROPIC: [],
 };
 
 export function AiSettingsTab({ initial }: { initial: AiSettingsData }) {

@@ -36,7 +36,7 @@ export default async function AdminArticlesPage({
         }
       : {}),
     ...(kind ? { kind: kind as "ARTICLE" | "NEWS" } : {}),
-    ...(status ? { status: status as "DRAFT" | "PUBLISHED" } : {}),
+    ...(status ? { status: status as "DRAFT" | "PUBLISHED" | "ARCHIVED" } : {}),
   };
 
   const [posts, totalArticles, publishedArticles, categories] = await Promise.all([

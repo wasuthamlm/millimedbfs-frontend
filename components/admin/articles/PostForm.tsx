@@ -19,7 +19,7 @@ import {
 export type InitialPost = {
   id: string;
   kind: "ARTICLE" | "NEWS";
-  status: "DRAFT" | "PUBLISHED";
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   slug: string;
   titleTh: string;
   titleEn: string;
@@ -194,6 +194,7 @@ export function PostForm({
           >
             <option value="DRAFT">ฉบับร่าง</option>
             <option value="PUBLISHED">เผยแพร่แล้ว</option>
+            <option value="ARCHIVED">เก็บถาวร</option>
           </select>
         </div>
 
