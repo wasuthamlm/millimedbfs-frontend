@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 
 export type HeaderConfigInput = {
   layout: string;
@@ -31,7 +31,7 @@ export type HeaderConfigInput = {
 };
 
 export async function saveHeaderConfig(input: HeaderConfigInput) {
-  await requireAdmin();
+  await requirePermission("site.edit");
 
   const data = { ...input, logoTextTh: input.logoTextTh || null, logoTextEn: input.logoTextEn || null };
 

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import type { FooterColumn } from "@/data/admin-footer";
 
 type FooterContactInput = {
@@ -26,7 +26,7 @@ export async function saveFooterConfig(
   contact: FooterContactInput,
   theme: FooterThemeInput
 ) {
-  await requireAdmin();
+  await requirePermission("site.edit");
 
   await prisma.$transaction(async (tx) => {
     await tx.footerColumn.deleteMany({});

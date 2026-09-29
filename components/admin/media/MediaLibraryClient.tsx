@@ -25,6 +25,7 @@ type MediaItem = {
   filename: string;
   folderId: string | null;
   usageCount: number;
+  usedIn: string[];
 };
 
 type FolderOption = { id: string; name: string; count: number };
@@ -147,7 +148,12 @@ export function MediaLibraryClient({
 
   const handleDelete = async (ids: string[]) => {
     if (ids.length === 0) return;
-    if (!window.confirm(`ต้องการลบไฟล์ ${ids.length} รายการใช่หรือไม่?`)) return;
+    const inUse = media.filter((m) => ids.includes(m.id) && m.usedIn.length > 0);
+    const warning = inUse.length
+      ? `\n\n⚠️ มี ${inUse.length} ไฟล์ที่ยังถูกใช้งานอยู่ การลบจะทำให้รูปหายจากหน้าเว็บ:\n` +
+        inUse.map((m) => `• ${m.filename} — ${m.usedIn.join(", ")}`).join("\n")
+      : "";
+    if (!window.confirm(`ต้องการลบไฟล์ ${ids.length} รายการใช่หรือไม่?${warning}`)) return;
     await deleteMedia(ids);
     setSelected((prev) => {
       const next = new Set(prev);
@@ -377,8 +383,8 @@ export function MediaLibraryClient({
               <div className="flex flex-1 flex-col gap-2 p-3">
                 <div>
                   <p className="truncate text-sm font-medium text-slate-700">{item.filename}</p>
-                  <p className="text-xs text-slate-400">
-                    {item.usageCount > 0 ? `ใช้งานอยู่ ${item.usageCount} จุด` : "ยังไม่ได้ใช้"}
+                  <p className="truncate text-xs text-slate-400" title={item.usedIn.join("\n")}>
+                    {item.usageCount > 0 ? `จาก: ${item.usedIn.join(", ")}` : "ยังไม่ได้ใช้"}
                   </p>
                 </div>
                 <FolderSelect
@@ -442,8 +448,8 @@ export function MediaLibraryClient({
                       <span className="max-w-xs truncate font-medium text-slate-700">{item.filename}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-slate-500">
-                    {item.usageCount > 0 ? `ใช้งานอยู่ ${item.usageCount} จุด` : "ยังไม่ได้ใช้"}
+                  <td className="max-w-xs truncate px-4 py-3 text-slate-500" title={item.usedIn.join("\n")}>
+                    {item.usageCount > 0 ? `จาก: ${item.usedIn.join(", ")}` : "ยังไม่ได้ใช้"}
                   </td>
                   <td className="px-4 py-3">
                     <FolderSelect

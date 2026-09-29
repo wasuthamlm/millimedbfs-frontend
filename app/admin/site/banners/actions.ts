@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { getOrCreateMedia } from "@/lib/media";
 import type { Banner } from "@/data/admin-banners";
 
@@ -19,7 +19,7 @@ export type BannerConfigInput = {
 };
 
 export async function saveBannerConfig(input: BannerConfigInput) {
-  await requireAdmin();
+  await requirePermission("banner.edit");
 
   await prisma.siteBannerConfig.upsert({
     where: { id: "singleton" },
@@ -32,7 +32,7 @@ export async function saveBannerConfig(input: BannerConfigInput) {
 }
 
 export async function saveBanners(banners: Banner[]) {
-  await requireAdmin();
+  await requirePermission("banner.edit");
 
   await prisma.$transaction(async (tx) => {
     await tx.banner.deleteMany({});

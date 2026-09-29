@@ -4,7 +4,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requireAdmin, requirePermission } from "@/lib/require-admin";
 import { getOrCreateMedia } from "@/lib/media";
 import type { AiProvider } from "@/lib/generated/prisma/client";
 
@@ -58,7 +58,7 @@ export type GeneralSettingsInput = {
 };
 
 export async function saveGeneralSettings(input: GeneralSettingsInput) {
-  await requireAdmin();
+  await requirePermission("settings.edit");
   await prisma.siteSettings.upsert({
     where: { id: "singleton" },
     update: {
@@ -77,7 +77,7 @@ export async function saveGeneralSettings(input: GeneralSettingsInput) {
 }
 
 export async function saveHomepageSettings(input: { youtubeEmbedUrl: string }) {
-  await requireAdmin();
+  await requirePermission("settings.edit");
   await prisma.siteSettings.upsert({
     where: { id: "singleton" },
     update: { youtubeEmbedUrl: input.youtubeEmbedUrl || null },
@@ -99,7 +99,7 @@ export type ContactInfoInput = {
 };
 
 export async function saveContactInfo(input: ContactInfoInput) {
-  await requireAdmin();
+  await requirePermission("settings.edit");
   const data = {
     companyNameTh: input.companyNameTh || null,
     companyNameEn: input.companyNameEn || null,
@@ -120,7 +120,7 @@ export async function saveContactInfo(input: ContactInfoInput) {
 }
 
 export async function saveBrandingSettings(input: { taglineTh: string; taglineEn: string }) {
-  await requireAdmin();
+  await requirePermission("settings.edit");
   const data = { tagline: input.taglineTh || null, taglineEn: input.taglineEn || null };
   await prisma.footerContact.upsert({
     where: { id: "singleton" },
@@ -138,7 +138,7 @@ export type AnalyticsSettingsInput = {
 };
 
 export async function saveAnalyticsSettings(input: AnalyticsSettingsInput) {
-  await requireAdmin();
+  await requirePermission("settings.edit");
   const data = {
     gtmId: input.gtmId || null,
     ga4Id: input.ga4Id || null,
@@ -154,7 +154,7 @@ export async function saveAnalyticsSettings(input: AnalyticsSettingsInput) {
 }
 
 export async function saveSeoDefaults(input: { seoMetaTitleTh: string; seoMetaDescTh: string }) {
-  await requireAdmin();
+  await requirePermission("settings.edit");
   const data = {
     seoMetaTitleTh: input.seoMetaTitleTh || null,
     seoMetaDescTh: input.seoMetaDescTh || null,
@@ -178,7 +178,7 @@ export type SocialSettingsInput = {
 };
 
 export async function saveSocialSettings(input: SocialSettingsInput) {
-  await requireAdmin();
+  await requirePermission("settings.edit");
   const data = {
     facebookUrl: input.facebookUrl || null,
     instagramUrl: input.instagramUrl || null,
@@ -197,7 +197,7 @@ export async function saveSocialSettings(input: SocialSettingsInput) {
 }
 
 export async function saveSiteAssets(input: { siteLogoUrl: string; faviconUrl: string; loginBgUrl: string }) {
-  await requireAdmin();
+  await requirePermission("settings.edit");
 
   const [siteLogo, favicon, loginBg] = await Promise.all([
     input.siteLogoUrl ? getOrCreateMedia(prisma, input.siteLogoUrl) : null,
@@ -233,7 +233,7 @@ export type GlobalThemeInput = {
 };
 
 export async function saveGlobalTheme(input: GlobalThemeInput) {
-  await requireAdmin();
+  await requirePermission("settings.edit");
   await prisma.globalTheme.upsert({
     where: { id: "singleton" },
     update: input,
@@ -245,7 +245,7 @@ export async function saveGlobalTheme(input: GlobalThemeInput) {
 // ───────────────────────── AI Settings tab ─────────────────────────
 
 export async function saveAiSettings(input: { provider: AiProvider; model: string }) {
-  await requireAdmin();
+  await requirePermission("settings.edit");
   await prisma.aiSettings.upsert({
     where: { id: "singleton" },
     update: { provider: input.provider, model: input.model || null },

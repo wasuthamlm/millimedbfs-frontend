@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { deleteFromStorage } from "@/lib/supabase-storage";
 
 function revalidateAll() {
@@ -10,7 +10,7 @@ function revalidateAll() {
 }
 
 export async function createMediaFolder(name: string): Promise<{ error?: string; id?: string }> {
-  await requireAdmin();
+  await requirePermission("media.upload");
 
   const trimmed = name.trim();
   if (!trimmed) return { error: "กรุณาระบุชื่อโฟลเดอร์" };
@@ -24,14 +24,14 @@ export async function createMediaFolder(name: string): Promise<{ error?: string;
 }
 
 export async function deleteMediaFolder(id: string): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("media.delete");
   await prisma.mediaFolder.delete({ where: { id } });
   revalidateAll();
   return {};
 }
 
 export async function setMediaFolder(ids: string[], folderId: string | null): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("media.upload");
   if (ids.length === 0) return {};
 
   await prisma.media.updateMany({ where: { id: { in: ids } }, data: { folderId } });
@@ -40,7 +40,7 @@ export async function setMediaFolder(ids: string[], folderId: string | null): Pr
 }
 
 export async function deleteMedia(ids: string[]): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("media.delete");
   if (ids.length === 0) return {};
 
   const items = await prisma.media.findMany({ where: { id: { in: ids } } });

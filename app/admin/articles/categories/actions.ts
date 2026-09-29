@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 
 const categorySchema = z.object({
   nameTh: z.string().min(1, "จำเป็นต้องระบุชื่อไทย").max(120),
@@ -20,7 +20,7 @@ function revalidateAll() {
 }
 
 export async function createArticleCategory(input: z.infer<typeof categorySchema>) {
-  await requireAdmin();
+  await requirePermission("category.create");
   const parsed = categorySchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
 
@@ -39,7 +39,7 @@ export async function createArticleCategory(input: z.infer<typeof categorySchema
 }
 
 export async function updateArticleCategory(id: string, input: z.infer<typeof categorySchema>) {
-  await requireAdmin();
+  await requirePermission("category.edit");
   const parsed = categorySchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
 
@@ -59,21 +59,21 @@ export async function updateArticleCategory(id: string, input: z.infer<typeof ca
 }
 
 export async function deleteArticleCategory(id: string) {
-  await requireAdmin();
+  await requirePermission("category.delete");
   await prisma.articleCategory.delete({ where: { id } });
   revalidateAll();
   return {};
 }
 
 export async function toggleArticleCategory(id: string, active: boolean) {
-  await requireAdmin();
+  await requirePermission("category.publish");
   await prisma.articleCategory.update({ where: { id }, data: { active } });
   revalidateAll();
   return {};
 }
 
 export async function reorderArticleCategories(ids: string[]) {
-  await requireAdmin();
+  await requirePermission("category.edit");
   await prisma.$transaction(
     ids.map((id, index) => prisma.articleCategory.update({ where: { id }, data: { order: index } }))
   );

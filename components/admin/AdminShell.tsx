@@ -10,6 +10,7 @@ import { adminNavItems } from "@/data/admin-nav";
 import { PanelLeftIcon, LogOutIcon, GlobeIcon } from "@/components/ui/admin-icons";
 import { ChevronDown, Menu, X } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
+import { canAccessPath } from "@/lib/admin-roles";
 
 function isChildActive(pathname: string | null, href: string) {
   return pathname === href || !!pathname?.startsWith(href + "/");
@@ -21,8 +22,15 @@ function findActiveParent(pathname: string | null) {
   )?.href;
 }
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({ children, role }: { children: React.ReactNode; role: string | null }) {
   const pathname = usePathname();
+  const navItems = adminNavItems
+    .filter((item) => canAccessPath(role, item.href))
+    .map((item) =>
+      item.children
+        ? { ...item, children: item.children.filter((c) => canAccessPath(role, c.href)) }
+        : item
+    );
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(() => findActiveParent(pathname) ?? null);
@@ -93,7 +101,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 overflow-y-auto px-3 py-2">
           <ul className="flex flex-col gap-1">
-            {adminNavItems.map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               const hasChildren = !!item.children?.length;
 

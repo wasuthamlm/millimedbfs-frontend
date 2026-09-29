@@ -4,7 +4,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
+import { canDo } from "@/lib/admin-roles";
 import { getOrCreateMedia } from "@/lib/media";
 
 const productSchema = z.object({
@@ -49,13 +50,15 @@ function parsePrice(price?: string): number | null {
 }
 
 export async function createProduct(input: ProductFormInput): Promise<ProductActionResult> {
-  await requireAdmin();
+  const session = await requirePermission("product.create");
 
   const parsed = productSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
   }
   const data = parsed.data;
+  // Contributors can edit but never publish — their saves always land as draft.
+  if (!canDo(session.user.role, "product.publish")) data.status = "DRAFT";
 
   try {
     const imageId = await resolveImageId(data.imageUrl);
@@ -94,13 +97,15 @@ export async function updateProduct(
   id: string,
   input: ProductFormInput,
 ): Promise<ProductActionResult> {
-  await requireAdmin();
+  const session = await requirePermission("product.edit");
 
   const parsed = productSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
   }
   const data = parsed.data;
+  // Contributors can edit but never publish — their saves always land as draft.
+  if (!canDo(session.user.role, "product.publish")) data.status = "DRAFT";
 
   const existing = await prisma.product.findUnique({ where: { id } });
   if (!existing) {
@@ -143,7 +148,7 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: string): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("product.delete");
 
   const existing = await prisma.product.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบสินค้า" };
@@ -154,21 +159,21 @@ export async function deleteProduct(id: string): Promise<{ error?: string }> {
 }
 
 export async function setProductStatus(id: string, status: "ACTIVE" | "DRAFT" | "ARCHIVED") {
-  await requireAdmin();
+  await requirePermission("product.publish");
   await prisma.product.update({ where: { id }, data: { status } });
   revalidateAll(id);
   return {};
 }
 
 export async function toggleProductFeatured(id: string, featured: boolean) {
-  await requireAdmin();
+  await requirePermission("product.edit");
   await prisma.product.update({ where: { id }, data: { featured } });
   revalidateAll(id);
   return {};
 }
 
 export async function toggleProductBestSeller(id: string, bestSeller: boolean) {
-  await requireAdmin();
+  await requirePermission("product.edit");
   await prisma.product.update({ where: { id }, data: { bestSeller } });
   revalidateAll(id);
   return {};

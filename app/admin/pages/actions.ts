@@ -4,7 +4,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
+import { canDo } from "@/lib/admin-roles";
 
 const pageSchema = z.object({
   status: z.enum(["DRAFT", "PUBLISHED"]),
@@ -21,13 +22,15 @@ export type PageFormInput = z.infer<typeof pageSchema>;
 export type PageActionResult = { error: string } | { error?: undefined; slug: string };
 
 export async function createPage(input: PageFormInput): Promise<PageActionResult> {
-  await requireAdmin();
+  const session = await requirePermission("page.create");
 
   const parsed = pageSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
   }
   const data = parsed.data;
+  // Contributors can edit but never publish — their saves always land as draft.
+  if (!canDo(session.user.role, "page.publish")) data.status = "DRAFT";
 
   try {
     const page = await prisma.page.create({
@@ -51,7 +54,7 @@ export async function createPage(input: PageFormInput): Promise<PageActionResult
 }
 
 export async function setPageStatus(id: string, status: "DRAFT" | "PUBLISHED"): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("page.publish");
   await prisma.page.update({ where: { id }, data: { status } });
   revalidatePath("/admin/pages");
   revalidatePath("/", "layout");
@@ -67,7 +70,7 @@ export type PageSeoInput = {
 };
 
 export async function setPageSeo(id: string, input: PageSeoInput): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("page.edit");
   await prisma.page.update({
     where: { id },
     data: {
@@ -84,7 +87,7 @@ export async function setPageSeo(id: string, input: PageSeoInput): Promise<{ err
 }
 
 export async function archivePages(ids: string[]): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("page.delete");
   if (ids.length === 0) return {};
   await prisma.page.updateMany({ where: { id: { in: ids } }, data: { archived: true } });
   revalidatePath("/admin/pages");
@@ -93,7 +96,7 @@ export async function archivePages(ids: string[]): Promise<{ error?: string }> {
 }
 
 export async function restorePages(ids: string[]): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("page.delete");
   if (ids.length === 0) return {};
   await prisma.page.updateMany({ where: { id: { in: ids } }, data: { archived: false } });
   revalidatePath("/admin/pages");
@@ -102,7 +105,7 @@ export async function restorePages(ids: string[]): Promise<{ error?: string }> {
 }
 
 export async function deletePage(id: string): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("page.delete");
 
   const existing = await prisma.page.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบหน้านี้" };

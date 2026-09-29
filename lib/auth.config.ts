@@ -2,7 +2,7 @@ import type { NextAuthConfig } from "next-auth";
 import type { Role } from "@/lib/generated/prisma/client";
 
 // Edge-safe subset of the Auth.js config — no Prisma adapter, no bcrypt.
-// Used directly by middleware.ts; lib/auth.ts extends this with the
+// Used directly by proxy.ts; lib/auth.ts extends this with the
 // Node-only Credentials provider + Prisma adapter for Route Handlers /
 // Server Actions / Server Components.
 export default {
@@ -20,7 +20,12 @@ export default {
       return token;
     },
     session({ session, token }) {
-      if (session.user) session.user.role = token.role as Role;
+      if (session.user) {
+        session.user.role = token.role as Role;
+        // Auth.js doesn't expose the user id on the session by default; the
+        // admin actions rely on it for "not your own account" checks.
+        if (token.sub) session.user.id = token.sub;
+      }
       return session;
     },
   },

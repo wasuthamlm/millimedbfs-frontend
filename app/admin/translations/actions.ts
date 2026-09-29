@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import { translateFields } from "@/lib/translate";
 import type { TranslatableEntity } from "@/lib/generated/prisma/client";
 
@@ -27,7 +27,7 @@ async function getSourceFields(
 }
 
 export async function getPendingItemIds(entityType: TranslatableEntity, locale: string): Promise<string[]> {
-  await requireAdmin();
+  await requirePermission("translation.edit");
 
   const items =
     entityType === "ARTICLE"
@@ -47,7 +47,7 @@ export async function translateItem(
   entityId: string,
   locale: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  await requireAdmin();
+  await requirePermission("translation.edit");
 
   const fieldKeys = CONTENT_FIELDS[entityType];
   const source = await getSourceFields(entityType, entityId);

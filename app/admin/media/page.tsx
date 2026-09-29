@@ -1,17 +1,11 @@
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { MediaLibraryClient } from "@/components/admin/media/MediaLibraryClient";
+import { getMediaUsage } from "@/lib/media-usage";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 24;
-
-const UNUSED_FILTER: Prisma.MediaWhereInput = {
-  posts: { none: {} },
-  banners: { none: {} },
-  products: { none: {} },
-  popups: { none: {} },
-};
 
 export default async function AdminMediaPage({
   searchParams,
@@ -22,12 +16,18 @@ export default async function AdminMediaPage({
   const activeFolder = folder ?? "all";
   const page = Math.max(1, Number(pageParam) || 1);
 
+  // Usage has to be computed in code (URLs inside rich text / JSON config can't
+  // be expressed as a Prisma relation filter), so the "unused" filter becomes
+  // an id list.
+  const usage = await getMediaUsage();
+  const unusedFilter: Prisma.MediaWhereInput = { id: { notIn: [...usage.keys()] } };
+
   const where: Prisma.MediaWhereInput = {
     ...(q ? { filename: { contains: q, mode: "insensitive" } } : {}),
     ...(activeFolder === "uncategorized"
       ? { folderId: null }
       : activeFolder === "unused"
-        ? UNUSED_FILTER
+        ? unusedFilter
         : activeFolder !== "all"
           ? { folderId: activeFolder }
           : {}),
@@ -39,10 +39,7 @@ export default async function AdminMediaPage({
       orderBy: { createdAt: "desc" },
       take: PAGE_SIZE,
       skip: (page - 1) * PAGE_SIZE,
-      include: {
-        folder: true,
-        _count: { select: { posts: true, banners: true, products: true, popups: true } },
-      },
+      include: { folder: true },
     }),
     prisma.media.count({ where }),
     prisma.mediaFolder.findMany({
@@ -51,7 +48,7 @@ export default async function AdminMediaPage({
     }),
     prisma.media.count(),
     prisma.media.count({ where: { folderId: null } }),
-    prisma.media.count({ where: UNUSED_FILTER }),
+    prisma.media.count({ where: unusedFilter }),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -63,7 +60,8 @@ export default async function AdminMediaPage({
         url: item.url,
         filename: item.filename,
         folderId: item.folderId,
-        usageCount: item._count.posts + item._count.banners + item._count.products + item._count.popups,
+        usageCount: usage.get(item.id)?.length ?? 0,
+        usedIn: usage.get(item.id) ?? [],
       }))}
       folders={folders.map((f) => ({ id: f.id, name: f.name, count: f._count.media }))}
       totalAll={totalAll}

@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/lib/generated/prisma/client";
 import type { Role } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 
 function revalidateAll() {
   revalidatePath("/admin/users");
@@ -23,7 +23,7 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UserActionResult = { error?: string };
 
 export async function createUser(input: CreateUserInput): Promise<UserActionResult> {
-  await requireAdmin();
+  await requirePermission("users.manage");
 
   const parsed = createUserSchema.safeParse(input);
   if (!parsed.success) {
@@ -54,9 +54,9 @@ export async function createUser(input: CreateUserInput): Promise<UserActionResu
 }
 
 export async function setUserRole(id: string, role: Role): Promise<UserActionResult> {
-  const session = await requireAdmin();
-  if (session.user?.id === id && role !== "ADMIN") {
-    return { error: "ไม่สามารถลดสิทธิ์ของบัญชีตัวเองได้" };
+  const session = await requirePermission("users.manage");
+  if (session.user.id === id) {
+    return { error: "ไม่สามารถเปลี่ยนสิทธิ์ของบัญชีตัวเองได้" };
   }
   await prisma.user.update({ where: { id }, data: { role } });
   revalidateAll();
@@ -64,7 +64,7 @@ export async function setUserRole(id: string, role: Role): Promise<UserActionRes
 }
 
 export async function setUserDisabled(id: string, disabled: boolean): Promise<UserActionResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission("users.manage");
   if (session.user?.id === id) {
     return { error: "ไม่สามารถปิดใช้งานบัญชีตัวเองได้" };
   }
@@ -74,7 +74,7 @@ export async function setUserDisabled(id: string, disabled: boolean): Promise<Us
 }
 
 export async function resetUserPassword(id: string, newPassword: string): Promise<UserActionResult> {
-  await requireAdmin();
+  await requirePermission("users.manage");
   const parsed = z.string().min(8, "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร").safeParse(newPassword);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "รหัสผ่านไม่ถูกต้อง" };
@@ -86,7 +86,7 @@ export async function resetUserPassword(id: string, newPassword: string): Promis
 }
 
 export async function deleteUser(id: string): Promise<UserActionResult> {
-  const session = await requireAdmin();
+  const session = await requirePermission("users.manage");
   if (session.user?.id === id) {
     return { error: "ไม่สามารถลบบัญชีตัวเองได้" };
   }

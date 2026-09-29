@@ -4,7 +4,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
+import { canDo } from "@/lib/admin-roles";
 import { getOrCreateMedia } from "@/lib/media";
 
 const postSchema = z.object({
@@ -66,13 +67,15 @@ function revalidateAll(kind: PostFormInput["kind"], slugs: string[]) {
 }
 
 export async function createPost(input: PostFormInput): Promise<PostActionResult> {
-  await requireAdmin();
+  const session = await requirePermission("article.create");
 
   const parsed = postSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
   }
   const data = parsed.data;
+  // Contributors can edit but never publish — their saves always land as draft.
+  if (!canDo(session.user.role, "article.publish")) data.status = "DRAFT";
 
   try {
     const coverImageId = await resolveCoverImageId(data.coverImageUrl);
@@ -112,13 +115,15 @@ export async function createPost(input: PostFormInput): Promise<PostActionResult
 }
 
 export async function updatePost(id: string, input: PostFormInput): Promise<PostActionResult> {
-  await requireAdmin();
+  const session = await requirePermission("article.edit");
 
   const parsed = postSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
   }
   const data = parsed.data;
+  // Contributors can edit but never publish — their saves always land as draft.
+  if (!canDo(session.user.role, "article.publish")) data.status = "DRAFT";
 
   const existing = await prisma.post.findUnique({ where: { id } });
   if (!existing) {
@@ -176,7 +181,7 @@ export async function updatePost(id: string, input: PostFormInput): Promise<Post
 }
 
 export async function deletePost(id: string): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("article.delete");
 
   const existing = await prisma.post.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบบทความ" };
@@ -187,7 +192,7 @@ export async function deletePost(id: string): Promise<{ error?: string }> {
 }
 
 export async function setPostStatus(id: string, status: "DRAFT" | "PUBLISHED"): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("article.publish");
 
   const existing = await prisma.post.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบบทความ" };
@@ -205,7 +210,7 @@ export async function setPostStatus(id: string, status: "DRAFT" | "PUBLISHED"): 
 }
 
 export async function setPostKind(id: string, kind: "ARTICLE" | "NEWS"): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("article.edit");
 
   const existing = await prisma.post.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบบทความ" };
@@ -220,7 +225,7 @@ export async function setPostKind(id: string, kind: "ARTICLE" | "NEWS"): Promise
 }
 
 export async function setPostCategory(id: string, categoryId: string): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("article.edit");
 
   const existing = await prisma.post.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบบทความ" };
@@ -233,7 +238,7 @@ export async function setPostCategory(id: string, categoryId: string): Promise<{
 }
 
 export async function togglePostStatus(id: string): Promise<{ error?: string }> {
-  await requireAdmin();
+  await requirePermission("article.publish");
 
   const existing = await prisma.post.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบบทความ" };

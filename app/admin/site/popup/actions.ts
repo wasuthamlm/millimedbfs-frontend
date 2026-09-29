@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import type { PopupConfig } from "@/data/admin-popup";
 
 export async function savePopupConfig(config: PopupConfig) {
-  await requireAdmin();
+  await requirePermission("popup.edit");
 
   let imageId: string | undefined;
   if (config.image) {

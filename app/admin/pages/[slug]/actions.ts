@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
 import type { PageSection, SectionType } from "@/data/admin-pages";
 import type { SectionType as PrismaSectionType } from "@/lib/generated/prisma/client";
 
@@ -19,7 +19,7 @@ export async function saveSections(
   pageTitleTh: string,
   sections: PageSection[]
 ) {
-  await requireAdmin();
+  await requirePermission("page.edit");
 
   await prisma.$transaction(async (tx) => {
     const page = await tx.page.upsert({

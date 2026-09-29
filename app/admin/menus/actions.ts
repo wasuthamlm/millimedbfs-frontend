@@ -3,7 +3,8 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
+import { requirePermission } from "@/lib/require-admin";
+import { canDo } from "@/lib/admin-roles";
 
 const navLinkSchema = z.object({
   labelTh: z.string().min(1, "จำเป็นต้องระบุชื่อเมนู").max(120),
@@ -22,7 +23,7 @@ function revalidateAll() {
 }
 
 export async function createNavLink(input: z.infer<typeof navLinkSchema>): Promise<ActionResult> {
-  await requireAdmin();
+  await requirePermission("menu.create");
   const parsed = navLinkSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
 
@@ -46,7 +47,7 @@ export async function createNavLink(input: z.infer<typeof navLinkSchema>): Promi
 }
 
 export async function updateNavLink(id: string, input: z.infer<typeof navLinkSchema>): Promise<ActionResult> {
-  await requireAdmin();
+  await requirePermission("menu.edit");
   const parsed = navLinkSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
 
@@ -64,21 +65,25 @@ export async function updateNavLink(id: string, input: z.infer<typeof navLinkSch
 }
 
 export async function deleteNavLink(id: string): Promise<ActionResult> {
-  await requireAdmin();
+  await requirePermission("menu.delete");
   await prisma.navLink.delete({ where: { id } });
   revalidateAll();
   return {};
 }
 
 export async function toggleNavLink(id: string, active: boolean): Promise<ActionResult> {
-  await requireAdmin();
+  await requirePermission("menu.edit");
   await prisma.navLink.update({ where: { id }, data: { active } });
   revalidateAll();
   return {};
 }
 
 export async function reorderNavLinks(ids: string[]): Promise<ActionResult> {
-  await requireAdmin();
+  const session = await requirePermission("menu.edit");
+  if (!canDo(session.user.role, "menu.reorder-top")) {
+    const topLevel = await prisma.navLink.count({ where: { id: { in: ids }, parentId: null } });
+    if (topLevel > 0) return { error: "Contributor ไม่สามารถจัดลำดับเมนูหลักได้" };
+  }
   await prisma.$transaction(
     ids.map((id, index) => prisma.navLink.update({ where: { id }, data: { order: index } }))
   );
