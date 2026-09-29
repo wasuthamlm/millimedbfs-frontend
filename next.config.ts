@@ -24,6 +24,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  experimental: {
+    // Two root layouts (public site + admin) — app/global-not-found.tsx serves unmatched URLs.
+    globalNotFound: true,
+  },
   images: {
     remotePatterns: [
       {

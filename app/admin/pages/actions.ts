@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidate-site";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
@@ -43,7 +44,7 @@ export async function createPage(input: PageFormInput): Promise<PageActionResult
     });
 
     revalidatePath("/admin/pages");
-    revalidatePath("/", "layout");
+    revalidateSite();
     return { slug: page.slug };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -57,7 +58,7 @@ export async function setPageStatus(id: string, status: "DRAFT" | "PUBLISHED"): 
   await requirePermission("page.publish");
   await prisma.page.update({ where: { id }, data: { status } });
   revalidatePath("/admin/pages");
-  revalidatePath("/", "layout");
+  revalidateSite();
   return {};
 }
 
@@ -82,7 +83,7 @@ export async function setPageSeo(id: string, input: PageSeoInput): Promise<{ err
     },
   });
   revalidatePath("/admin/pages");
-  revalidatePath("/", "layout");
+  revalidateSite();
   return {};
 }
 
@@ -91,7 +92,7 @@ export async function archivePages(ids: string[]): Promise<{ error?: string }> {
   if (ids.length === 0) return {};
   await prisma.page.updateMany({ where: { id: { in: ids } }, data: { archived: true } });
   revalidatePath("/admin/pages");
-  revalidatePath("/", "layout");
+  revalidateSite();
   return {};
 }
 
@@ -100,7 +101,7 @@ export async function restorePages(ids: string[]): Promise<{ error?: string }> {
   if (ids.length === 0) return {};
   await prisma.page.updateMany({ where: { id: { in: ids } }, data: { archived: false } });
   revalidatePath("/admin/pages");
-  revalidatePath("/", "layout");
+  revalidateSite();
   return {};
 }
 
@@ -112,6 +113,6 @@ export async function deletePage(id: string): Promise<{ error?: string }> {
 
   await prisma.page.delete({ where: { id } });
   revalidatePath("/admin/pages");
-  revalidatePath("/", "layout");
+  revalidateSite();
   return {};
 }

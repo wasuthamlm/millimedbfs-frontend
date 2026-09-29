@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { PageSection, SectionType } from "@/data/admin-pages";
 import { PageEditor } from "@/components/admin/pages/PageEditor";
 import { prisma } from "@/lib/prisma";
-import { toArticleView, toNewsView } from "@/lib/post-view";
+import { POST_CARD_INCLUDE, toArticleView, toNewsView } from "@/lib/post-view";
 import { calculateSeoAeoGeo, pageToScoreInput } from "@/lib/seo-score";
 import type { SectionType as PrismaSectionType } from "@/lib/generated/prisma/client";
 import type { NavLink } from "@/data/nav";
@@ -62,12 +62,12 @@ export default async function PageEditorRoute({
       prisma.post.findMany({
         where: { kind: "ARTICLE", status: "PUBLISHED" },
         orderBy: { publishedAt: "desc" },
-        include: { coverImage: true },
+        include: POST_CARD_INCLUDE,
       }),
       prisma.post.findMany({
         where: { kind: "NEWS", status: "PUBLISHED" },
         orderBy: { publishedAt: "desc" },
-        include: { coverImage: true },
+        include: POST_CARD_INCLUDE,
       }),
       prisma.navLink.findMany({
         where: { placement: "HEADER" },

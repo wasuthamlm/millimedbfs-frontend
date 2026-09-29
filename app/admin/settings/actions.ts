@@ -3,6 +3,7 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requirePermission } from "@/lib/require-admin";
 import { getOrCreateMedia } from "@/lib/media";
@@ -44,9 +45,9 @@ export async function changePassword(input: {
   return {};
 }
 
-function revalidateSite() {
+function revalidateSettings() {
   revalidatePath("/admin/settings");
-  revalidatePath("/", "layout");
+  revalidateSite();
 }
 
 // ───────────────────────── Site Settings tab ─────────────────────────
@@ -73,7 +74,7 @@ export async function saveGeneralSettings(input: GeneralSettingsInput) {
       siteUrl: input.siteUrl || null,
     },
   });
-  revalidateSite();
+  revalidateSettings();
 }
 
 export async function saveHomepageSettings(input: { youtubeEmbedUrl: string }) {
@@ -83,7 +84,7 @@ export async function saveHomepageSettings(input: { youtubeEmbedUrl: string }) {
     update: { youtubeEmbedUrl: input.youtubeEmbedUrl || null },
     create: { id: "singleton", youtubeEmbedUrl: input.youtubeEmbedUrl || null },
   });
-  revalidateSite();
+  revalidateSettings();
 }
 
 export type ContactInfoInput = {
@@ -116,7 +117,7 @@ export async function saveContactInfo(input: ContactInfoInput) {
     update: data,
     create: { id: "singleton", ...data },
   });
-  revalidateSite();
+  revalidateSettings();
 }
 
 export async function saveBrandingSettings(input: { taglineTh: string; taglineEn: string }) {
@@ -127,7 +128,7 @@ export async function saveBrandingSettings(input: { taglineTh: string; taglineEn
     update: data,
     create: { id: "singleton", ...data },
   });
-  revalidateSite();
+  revalidateSettings();
 }
 
 export type AnalyticsSettingsInput = {
@@ -150,7 +151,7 @@ export async function saveAnalyticsSettings(input: AnalyticsSettingsInput) {
     update: data,
     create: { id: "singleton", ...data },
   });
-  revalidateSite();
+  revalidateSettings();
 }
 
 export async function saveSeoDefaults(input: { seoMetaTitleTh: string; seoMetaDescTh: string }) {
@@ -164,7 +165,7 @@ export async function saveSeoDefaults(input: { seoMetaTitleTh: string; seoMetaDe
     update: data,
     create: { id: "singleton", ...data },
   });
-  revalidateSite();
+  revalidateSettings();
 }
 
 export type SocialSettingsInput = {
@@ -193,7 +194,7 @@ export async function saveSocialSettings(input: SocialSettingsInput) {
     update: data,
     create: { id: "singleton", ...data },
   });
-  revalidateSite();
+  revalidateSettings();
 }
 
 export async function saveSiteAssets(input: { siteLogoUrl: string; faviconUrl: string; loginBgUrl: string }) {
@@ -215,7 +216,7 @@ export async function saveSiteAssets(input: { siteLogoUrl: string; faviconUrl: s
     update: data,
     create: { id: "singleton", ...data },
   });
-  revalidateSite();
+  revalidateSettings();
   revalidatePath("/admin/login");
 }
 
@@ -239,7 +240,7 @@ export async function saveGlobalTheme(input: GlobalThemeInput) {
     update: input,
     create: { id: "singleton", ...input },
   });
-  revalidateSite();
+  revalidateSettings();
 }
 
 // ───────────────────────── AI Settings tab ─────────────────────────

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { canDo } from "@/lib/admin-roles";
@@ -19,7 +20,7 @@ type ActionResult = { error?: string };
 
 function revalidateAll() {
   revalidatePath("/admin/menus");
-  revalidatePath("/", "layout");
+  revalidateSite();
 }
 
 export async function createNavLink(input: z.infer<typeof navLinkSchema>): Promise<ActionResult> {

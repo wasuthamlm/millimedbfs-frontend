@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidate-site";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
@@ -30,11 +31,10 @@ const productSchema = z.object({
 export type ProductFormInput = z.infer<typeof productSchema>;
 export type ProductActionResult = { error: string } | { error?: undefined; id: string };
 
-function revalidateAll(id?: string) {
+function revalidateAll() {
   revalidatePath("/admin/products");
   revalidatePath("/admin");
-  revalidatePath("/products");
-  if (id) revalidatePath(`/products/${id}`);
+  revalidateSite();
 }
 
 async function resolveImageId(imageUrl?: string) {
@@ -83,7 +83,7 @@ export async function createProduct(input: ProductFormInput): Promise<ProductAct
       },
     });
 
-    revalidateAll(product.id);
+    revalidateAll();
     return { id: product.id };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -137,7 +137,7 @@ export async function updateProduct(
       },
     });
 
-    revalidateAll(id);
+    revalidateAll();
     return { id: product.id };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -154,27 +154,27 @@ export async function deleteProduct(id: string): Promise<{ error?: string }> {
   if (!existing) return { error: "ไม่พบสินค้า" };
 
   await prisma.product.delete({ where: { id } });
-  revalidateAll(id);
+  revalidateAll();
   return {};
 }
 
 export async function setProductStatus(id: string, status: "ACTIVE" | "DRAFT" | "ARCHIVED") {
   await requirePermission("product.publish");
   await prisma.product.update({ where: { id }, data: { status } });
-  revalidateAll(id);
+  revalidateAll();
   return {};
 }
 
 export async function toggleProductFeatured(id: string, featured: boolean) {
   await requirePermission("product.edit");
   await prisma.product.update({ where: { id }, data: { featured } });
-  revalidateAll(id);
+  revalidateAll();
   return {};
 }
 
 export async function toggleProductBestSeller(id: string, bestSeller: boolean) {
   await requirePermission("product.edit");
   await prisma.product.update({ where: { id }, data: { bestSeller } });
-  revalidateAll(id);
+  revalidateAll();
   return {};
 }

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidate-site";
 import { Prisma, type PostStatus } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
@@ -36,12 +37,6 @@ const postSchema = z.object({
 export type PostFormInput = z.infer<typeof postSchema>;
 export type PostActionResult = { error: string } | { error?: undefined; id: string };
 
-function publicPathsFor(kind: PostFormInput["kind"], slug: string) {
-  return kind === "ARTICLE"
-    ? [`/articles`, `/articles/${slug}`]
-    : [`/news`, `/news/${slug}`];
-}
-
 async function resolveCoverImageId(coverImageUrl?: string) {
   if (!coverImageUrl) return null;
   const media = await getOrCreateMedia(prisma, coverImageUrl);
@@ -55,15 +50,10 @@ async function resolveCategory(categoryId?: string) {
   return { categoryId: cat?.id ?? null, category: cat?.nameTh ?? null };
 }
 
-function revalidateAll(kind: PostFormInput["kind"], slugs: string[]) {
+function revalidateAll() {
   revalidatePath("/admin/articles");
   revalidatePath("/admin");
-  revalidatePath("/", "layout");
-  for (const slug of slugs) {
-    for (const path of publicPathsFor(kind, slug)) {
-      revalidatePath(path);
-    }
-  }
+  revalidateSite();
 }
 
 export async function createPost(input: PostFormInput): Promise<PostActionResult> {
@@ -104,7 +94,7 @@ export async function createPost(input: PostFormInput): Promise<PostActionResult
       },
     });
 
-    revalidateAll(data.kind, [data.slug]);
+    revalidateAll();
     return { id: post.id };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -164,12 +154,7 @@ export async function updatePost(id: string, input: PostFormInput): Promise<Post
       },
     });
 
-    const slugsToRevalidate =
-      existing.slug !== data.slug ? [existing.slug, data.slug] : [data.slug];
-    revalidateAll(data.kind, slugsToRevalidate);
-    if (existing.kind !== data.kind) {
-      revalidateAll(existing.kind, [existing.slug]);
-    }
+    revalidateAll();
 
     return { id: post.id };
   } catch (err) {
@@ -187,7 +172,7 @@ export async function deletePost(id: string): Promise<{ error?: string }> {
   if (!existing) return { error: "ไม่พบบทความ" };
 
   await prisma.post.delete({ where: { id } });
-  revalidateAll(existing.kind, [existing.slug]);
+  revalidateAll();
   return {};
 }
 
@@ -205,7 +190,7 @@ export async function setPostStatus(id: string, status: PostStatus): Promise<{ e
     },
   });
 
-  revalidateAll(existing.kind, [existing.slug]);
+  revalidateAll();
   return {};
 }
 
@@ -217,10 +202,7 @@ export async function setPostKind(id: string, kind: "ARTICLE" | "NEWS"): Promise
 
   await prisma.post.update({ where: { id }, data: { kind } });
 
-  revalidateAll(kind, [existing.slug]);
-  if (existing.kind !== kind) {
-    revalidateAll(existing.kind, [existing.slug]);
-  }
+  revalidateAll();
   return {};
 }
 
@@ -233,7 +215,7 @@ export async function setPostCategory(id: string, categoryId: string): Promise<{
   const { categoryId: resolvedId, category } = await resolveCategory(categoryId);
   await prisma.post.update({ where: { id }, data: { categoryId: resolvedId, category } });
 
-  revalidateAll(existing.kind, [existing.slug]);
+  revalidateAll();
   return {};
 }
 
@@ -253,6 +235,6 @@ export async function togglePostStatus(id: string): Promise<{ error?: string }> 
     },
   });
 
-  revalidateAll(existing.kind, [existing.slug]);
+  revalidateAll();
   return {};
 }

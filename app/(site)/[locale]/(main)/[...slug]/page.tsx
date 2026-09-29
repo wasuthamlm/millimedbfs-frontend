@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { toArticleView, toNewsView } from "@/lib/post-view";
+import { POST_CARD_INCLUDE, toArticleView, toNewsView } from "@/lib/post-view";
 import { PageSectionsRenderer } from "@/components/site/PageSectionsRenderer";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +57,7 @@ export default async function DynamicPage({ params }: { params: Promise<{ slug: 
       ? prisma.post.findMany({
           where: { kind: "NEWS", status: "PUBLISHED" },
           orderBy: { publishedAt: "desc" },
-          include: { coverImage: true },
+          include: POST_CARD_INCLUDE,
           take: newsTake,
         })
       : Promise.resolve([]),
@@ -65,7 +65,7 @@ export default async function DynamicPage({ params }: { params: Promise<{ slug: 
       ? prisma.post.findMany({
           where: { kind: "ARTICLE", status: "PUBLISHED" },
           orderBy: { publishedAt: "desc" },
-          include: { coverImage: true },
+          include: POST_CARD_INCLUDE,
           take: articlesTake,
         })
       : Promise.resolve([]),

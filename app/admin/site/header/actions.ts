@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 
@@ -42,5 +43,5 @@ export async function saveHeaderConfig(input: HeaderConfigInput) {
   });
 
   revalidatePath("/admin/site/header");
-  revalidatePath("/", "layout");
+  revalidateSite();
 }

@@ -14,7 +14,7 @@ export function NewsCard({ item }: { item: NewsItem }) {
           {item.title}
         </h3>
         <Link
-          href={`/news/${item.slug}`}
+          href={item.href}
           className="inline-flex items-center gap-1 text-sm font-medium text-brand-navy hover:text-brand-gold-dark"
         >
           อ่านต่อ

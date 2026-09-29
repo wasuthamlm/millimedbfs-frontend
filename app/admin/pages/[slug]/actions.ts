@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import type { PageSection, SectionType } from "@/data/admin-pages";
@@ -56,5 +57,5 @@ export async function saveSections(
   });
 
   revalidatePath(`/admin/pages/${pageSlug}`);
-  revalidatePath("/", "layout");
+  revalidateSite();
 }

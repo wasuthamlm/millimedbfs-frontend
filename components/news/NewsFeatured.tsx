@@ -15,7 +15,7 @@ export function NewsFeatured({ item }: { item: NewsItem }) {
       viewport={{ once: true, amount: 0.3 }}
     >
       <Link
-        href={`/news/${item.slug}`}
+        href={item.href}
         className="group block overflow-hidden rounded-2xl border border-slate-100 shadow-sm transition-shadow hover:shadow-lg"
       >
         <div className="relative aspect-[3/2] w-full overflow-hidden">

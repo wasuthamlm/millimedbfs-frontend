@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidate-site";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
@@ -15,8 +16,7 @@ const categorySchema = z.object({
 function revalidateAll() {
   revalidatePath("/admin/articles/categories");
   revalidatePath("/admin/articles");
-  revalidatePath("/articles");
-  revalidatePath("/news");
+  revalidateSite();
 }
 
 export async function createArticleCategory(input: z.infer<typeof categorySchema>) {

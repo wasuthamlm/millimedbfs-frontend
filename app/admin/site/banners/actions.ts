@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { getOrCreateMedia } from "@/lib/media";
@@ -28,7 +29,7 @@ export async function saveBannerConfig(input: BannerConfigInput) {
   });
 
   revalidatePath("/admin/site/banners");
-  revalidatePath("/", "layout");
+  revalidateSite();
 }
 
 export async function saveBanners(banners: Banner[]) {
@@ -57,5 +58,5 @@ export async function saveBanners(banners: Banner[]) {
   });
 
   revalidatePath("/admin/site/banners");
-  revalidatePath("/", "layout");
+  revalidateSite();
 }

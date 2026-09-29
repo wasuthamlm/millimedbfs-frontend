@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { toArticleView, toNewsView } from "@/lib/post-view";
+import { POST_CARD_INCLUDE, toArticleView, toNewsView } from "@/lib/post-view";
 import { PageSectionsRenderer } from "@/components/site/PageSectionsRenderer";
 import type { SectionType } from "@/lib/generated/prisma/client";
 
@@ -53,13 +53,13 @@ export default async function Home() {
     prisma.post.findMany({
       where: { kind: "NEWS", status: "PUBLISHED" },
       orderBy: { publishedAt: "desc" },
-      include: { coverImage: true },
+      include: POST_CARD_INCLUDE,
       take: newsTake,
     }),
     prisma.post.findMany({
       where: { kind: "ARTICLE", status: "PUBLISHED" },
       orderBy: { publishedAt: "desc" },
-      include: { coverImage: true },
+      include: POST_CARD_INCLUDE,
       take: articlesTake,
     }),
     prisma.banner.findMany({

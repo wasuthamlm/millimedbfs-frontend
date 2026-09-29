@@ -9,7 +9,7 @@ import type { ArticleView as Article } from "@/lib/post-view";
 export function ArticleCard({ article }: { article: Article }) {
   return (
     <motion.div variants={fadeInUp}>
-      <Link href={`/articles/${article.slug}`} className="group block h-full">
+      <Link href={article.href} className="group block h-full">
         <motion.div
           whileHover={{ y: -4 }}
           transition={{ duration: 0.2 }}

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { toArticleView, toNewsView } from "@/lib/post-view";
+import { POST_CARD_INCLUDE, toArticleView, toNewsView } from "@/lib/post-view";
 import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
 import { PageSectionsRenderer } from "@/components/site/PageSectionsRenderer";
 
@@ -30,7 +30,7 @@ export async function CmsPageOrPlaceholder({ slug, title }: { slug: string; titl
       ? prisma.post.findMany({
           where: { kind: "NEWS", status: "PUBLISHED" },
           orderBy: { publishedAt: "desc" },
-          include: { coverImage: true },
+          include: POST_CARD_INCLUDE,
           take: newsTake,
         })
       : Promise.resolve([]),
@@ -38,7 +38,7 @@ export async function CmsPageOrPlaceholder({ slug, title }: { slug: string; titl
       ? prisma.post.findMany({
           where: { kind: "ARTICLE", status: "PUBLISHED" },
           orderBy: { publishedAt: "desc" },
-          include: { coverImage: true },
+          include: POST_CARD_INCLUDE,
           take: articlesTake,
         })
       : Promise.resolve([]),

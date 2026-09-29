@@ -30,6 +30,6 @@ export const navLinks: NavLink[] = [
     ],
   },
   { label: "ข่าวสาร", href: "/news" },
-  { label: "บทความ", href: "/articles" },
+  { label: "บทความ", href: "/news/article" },
   { label: "ติดต่อเรา", href: "/contact" },
 ];
