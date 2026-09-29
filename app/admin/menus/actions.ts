@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import { canDo } from "@/lib/admin-roles";
 
 const navLinkSchema = z.object({
@@ -24,7 +25,7 @@ function revalidateAll() {
 }
 
 export async function createNavLink(input: z.infer<typeof navLinkSchema>): Promise<ActionResult> {
-  await requirePermission("menu.create");
+  const session = await requirePermission("menu.create");
   const parsed = navLinkSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
 
@@ -43,12 +44,14 @@ export async function createNavLink(input: z.infer<typeof navLinkSchema>): Promi
     },
   });
 
+  await logActivity(session.user, "create", "NavLink", { targetLabel: parsed.data.labelTh });
+
   revalidateAll();
   return {};
 }
 
 export async function updateNavLink(id: string, input: z.infer<typeof navLinkSchema>): Promise<ActionResult> {
-  await requirePermission("menu.edit");
+  const session = await requirePermission("menu.edit");
   const parsed = navLinkSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
 
@@ -61,20 +64,24 @@ export async function updateNavLink(id: string, input: z.infer<typeof navLinkSch
     },
   });
 
+  await logActivity(session.user, "update", "NavLink", { targetId: id, targetLabel: parsed.data.labelTh });
+
   revalidateAll();
   return {};
 }
 
 export async function deleteNavLink(id: string): Promise<ActionResult> {
-  await requirePermission("menu.delete");
+  const session = await requirePermission("menu.delete");
   await prisma.navLink.delete({ where: { id } });
+  await logActivity(session.user, "delete", "NavLink", { targetId: id });
   revalidateAll();
   return {};
 }
 
 export async function toggleNavLink(id: string, active: boolean): Promise<ActionResult> {
-  await requirePermission("menu.edit");
+  const session = await requirePermission("menu.edit");
   await prisma.navLink.update({ where: { id }, data: { active } });
+  await logActivity(session.user, (active ? "enable" : "disable"), "NavLink", { targetId: id });
   revalidateAll();
   return {};
 }
@@ -88,6 +95,7 @@ export async function reorderNavLinks(ids: string[]): Promise<ActionResult> {
   await prisma.$transaction(
     ids.map((id, index) => prisma.navLink.update({ where: { id }, data: { order: index } }))
   );
+  await logActivity(session.user, "reorder", "NavLink");
   revalidateAll();
   return {};
 }

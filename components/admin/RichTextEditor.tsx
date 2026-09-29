@@ -1,5 +1,6 @@
 "use client";
 
+import { uploadMedia } from "@/lib/upload-client";
 import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -259,17 +260,10 @@ export function RichTextEditor({
     if (!editor) return;
     setUploadError(null);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/admin/media", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) {
-        setUploadError(data.error ?? "อัปโหลดไม่สำเร็จ");
-        return;
-      }
-      editor.chain().focus().setImage({ src: data.url }).run();
-    } catch {
-      setUploadError("อัปโหลดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      const media = await uploadMedia(file, { allowed: ["image"] });
+      editor.chain().focus().setImage({ src: media.url }).run();
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "อัปโหลดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
     }
   };
 

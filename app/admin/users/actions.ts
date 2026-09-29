@@ -7,6 +7,7 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import type { Role } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 
 function revalidateAll() {
   revalidatePath("/admin/users");
@@ -23,7 +24,7 @@ export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UserActionResult = { error?: string };
 
 export async function createUser(input: CreateUserInput): Promise<UserActionResult> {
-  await requirePermission("users.manage");
+  const session = await requirePermission("users.manage");
 
   const parsed = createUserSchema.safeParse(input);
   if (!parsed.success) {
@@ -43,6 +44,7 @@ export async function createUser(input: CreateUserInput): Promise<UserActionResu
         emailVerified: new Date(),
       },
     });
+    await logActivity(session.user, "create", "User", { targetLabel: data.email, details: data.role });
     revalidateAll();
     return {};
   } catch (err) {
@@ -59,6 +61,7 @@ export async function setUserRole(id: string, role: Role): Promise<UserActionRes
     return { error: "ไม่สามารถเปลี่ยนสิทธิ์ของบัญชีตัวเองได้" };
   }
   await prisma.user.update({ where: { id }, data: { role } });
+  await logActivity(session.user, "role_change", "User", { targetId: id, details: role });
   revalidateAll();
   return {};
 }
@@ -69,18 +72,20 @@ export async function setUserDisabled(id: string, disabled: boolean): Promise<Us
     return { error: "ไม่สามารถปิดใช้งานบัญชีตัวเองได้" };
   }
   await prisma.user.update({ where: { id }, data: { disabled } });
+  await logActivity(session.user, (disabled ? "disable" : "enable"), "User", { targetId: id });
   revalidateAll();
   return {};
 }
 
 export async function resetUserPassword(id: string, newPassword: string): Promise<UserActionResult> {
-  await requirePermission("users.manage");
+  const session = await requirePermission("users.manage");
   const parsed = z.string().min(8, "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร").safeParse(newPassword);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "รหัสผ่านไม่ถูกต้อง" };
   }
   const passwordHash = await bcrypt.hash(parsed.data, 10);
   await prisma.user.update({ where: { id }, data: { passwordHash } });
+  await logActivity(session.user, "password_reset", "User", { targetId: id });
   revalidateAll();
   return {};
 }
@@ -91,6 +96,7 @@ export async function deleteUser(id: string): Promise<UserActionResult> {
     return { error: "ไม่สามารถลบบัญชีตัวเองได้" };
   }
   await prisma.user.delete({ where: { id } });
+  await logActivity(session.user, "delete", "User", { targetId: id });
   revalidateAll();
   return {};
 }

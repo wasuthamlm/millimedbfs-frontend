@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { canDo } from "@/lib/admin-roles";
 import { getOrCreateMedia } from "@/lib/media";
+import { diffFields, logActivity } from "@/lib/activity-log";
 
 const postSchema = z.object({
   kind: z.enum(["ARTICLE", "NEWS"]),
@@ -94,6 +95,7 @@ export async function createPost(input: PostFormInput): Promise<PostActionResult
       },
     });
 
+    await logActivity(session.user, "create", "Post", { targetId: post.id, targetLabel: post.titleTh });
     revalidateAll();
     return { id: post.id };
   } catch (err) {
@@ -154,8 +156,12 @@ export async function updatePost(id: string, input: PostFormInput): Promise<Post
       },
     });
 
+    await logActivity(session.user, "update", "Post", {
+      targetId: post.id,
+      targetLabel: post.titleTh,
+      changedFields: diffFields(existing, post),
+    });
     revalidateAll();
-
     return { id: post.id };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -166,18 +172,19 @@ export async function updatePost(id: string, input: PostFormInput): Promise<Post
 }
 
 export async function deletePost(id: string): Promise<{ error?: string }> {
-  await requirePermission("article.delete");
+  const session = await requirePermission("article.delete");
 
   const existing = await prisma.post.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบบทความ" };
 
   await prisma.post.delete({ where: { id } });
+  await logActivity(session.user, "delete", "Post", { targetId: id, targetLabel: existing.titleTh });
   revalidateAll();
   return {};
 }
 
 export async function setPostStatus(id: string, status: PostStatus): Promise<{ error?: string }> {
-  await requirePermission("article.publish");
+  const session = await requirePermission("article.publish");
 
   const existing = await prisma.post.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบบทความ" };
@@ -189,38 +196,45 @@ export async function setPostStatus(id: string, status: PostStatus): Promise<{ e
       publishedAt: status === "PUBLISHED" ? existing.publishedAt ?? new Date() : existing.publishedAt,
     },
   });
+  await logActivity(session.user, status === "PUBLISHED" ? "publish" : "status_change", "Post", {
+    targetId: id,
+    targetLabel: existing.titleTh,
+    details: `${existing.status} → ${status}`,
+  });
 
   revalidateAll();
   return {};
 }
 
 export async function setPostKind(id: string, kind: "ARTICLE" | "NEWS"): Promise<{ error?: string }> {
-  await requirePermission("article.edit");
+  const session = await requirePermission("article.edit");
 
   const existing = await prisma.post.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบบทความ" };
 
   await prisma.post.update({ where: { id }, data: { kind } });
+  await logActivity(session.user, "update", "Post", { targetId: id, targetLabel: existing.titleTh, changedFields: ["kind"] });
 
   revalidateAll();
   return {};
 }
 
 export async function setPostCategory(id: string, categoryId: string): Promise<{ error?: string }> {
-  await requirePermission("article.edit");
+  const session = await requirePermission("article.edit");
 
   const existing = await prisma.post.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบบทความ" };
 
   const { categoryId: resolvedId, category } = await resolveCategory(categoryId);
   await prisma.post.update({ where: { id }, data: { categoryId: resolvedId, category } });
+  await logActivity(session.user, "update", "Post", { targetId: id, targetLabel: existing.titleTh, changedFields: ["categoryId"] });
 
   revalidateAll();
   return {};
 }
 
 export async function togglePostStatus(id: string): Promise<{ error?: string }> {
-  await requirePermission("article.publish");
+  const session = await requirePermission("article.publish");
 
   const existing = await prisma.post.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบบทความ" };
@@ -233,6 +247,10 @@ export async function togglePostStatus(id: string): Promise<{ error?: string }> 
       publishedAt:
         nextStatus === "PUBLISHED" ? existing.publishedAt ?? new Date() : existing.publishedAt,
     },
+  });
+  await logActivity(session.user, nextStatus === "PUBLISHED" ? "publish" : "unpublish", "Post", {
+    targetId: id,
+    targetLabel: existing.titleTh,
   });
 
   revalidateAll();

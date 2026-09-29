@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import { translateFields } from "@/lib/translate";
 import type { TranslatableEntity } from "@/lib/generated/prisma/client";
 
@@ -48,7 +49,7 @@ export async function translateItem(
   entityId: string,
   locale: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  await requirePermission("translation.edit");
+  const session = await requirePermission("translation.edit");
 
   const fieldKeys = CONTENT_FIELDS[entityType];
   if (!fieldKeys) return { ok: false, error: "ยังไม่รองรับการแปลข้อมูลประเภทนี้" };
@@ -66,6 +67,7 @@ export async function translateItem(
         }),
       ),
     );
+    await logActivity(session.user, "translate", "Translation", { targetId: entityId, details: `${entityType} → ${locale}` });
     revalidatePath("/admin/translations");
     return { ok: true };
   } catch (err) {

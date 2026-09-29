@@ -1,56 +1,53 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { ImageIcon, TrashIcon } from "@/components/ui/admin-icons";
+import { FolderIcon, ImageIcon, TrashIcon, UploadCloudIcon } from "@/components/ui/admin-icons";
+import { MediaPickerDialog } from "@/components/admin/MediaPickerDialog";
+import { MediaPreview } from "@/components/admin/media/MediaPreview";
+import { uploadMedia } from "@/lib/upload-client";
+import { acceptFor, type MediaKind } from "@/lib/media-rules";
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy";
 
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"]);
-const MAX_SIZE = 5 * 1024 * 1024;
+const KIND_TEXT: Record<MediaKind, { noun: string; mime: string }> = {
+  image: { noun: "รูปภาพ", mime: "image/jpeg" },
+  video: { noun: "วิดีโอ", mime: "video/mp4" },
+  document: { noun: "ไฟล์ PDF", mime: "application/pdf" },
+};
 
+/**
+ * Single media field: upload a new file, pick one from the media library, or
+ * paste a URL. The value is the file's public URL.
+ */
 export function ImageUploader({
   value,
   onChange,
   label = "รูปภาพ",
+  kind = "image",
+  hint,
 }: {
   value: string;
   onChange: (url: string) => void;
   label?: string;
+  kind?: MediaKind;
+  hint?: string;
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const text = KIND_TEXT[kind];
 
   const handleFile = async (file: File) => {
     setError(null);
-
-    if (!ALLOWED_TYPES.has(file.type)) {
-      setError("รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, WEBP, GIF, SVG)");
-      if (inputRef.current) inputRef.current.value = "";
-      return;
-    }
-    if (file.size > MAX_SIZE) {
-      setError("ขนาดไฟล์ต้องไม่เกิน 5MB");
-      if (inputRef.current) inputRef.current.value = "";
-      return;
-    }
-
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/admin/media", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "อัปโหลดไม่สำเร็จ");
-        return;
-      }
-      onChange(data.url);
-    } catch {
-      setError("อัปโหลดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      const media = await uploadMedia(file, { allowed: [kind] });
+      onChange(media.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "อัปโหลดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -65,25 +62,34 @@ export function ImageUploader({
         <div
           className={cn(
             "relative flex h-24 w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-200 bg-slate-50",
-            value && "border-solid"
+            value && "border-solid",
           )}
         >
           {value ? (
-            <Image src={value} alt="" fill className="object-cover" unoptimized />
+            <MediaPreview url={value} mimeType={text.mime} alt="" />
           ) : (
             <ImageIcon className="h-6 w-6 text-slate-300" />
           )}
         </div>
 
         <div className="flex flex-1 flex-col gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60"
             >
-              {uploading ? "กำลังอัปโหลด..." : "อัปโหลดรูปภาพ"}
+              <UploadCloudIcon className="h-4 w-4" />
+              {uploading ? "กำลังอัปโหลด..." : `อัปโหลด${text.noun}`}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              <FolderIcon className="h-4 w-4" />
+              เลือกจากคลังสื่อ
             </button>
             {value && (
               <button
@@ -92,14 +98,14 @@ export function ImageUploader({
                 className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-sm text-red-600 hover:bg-red-50"
               >
                 <TrashIcon className="h-4 w-4" />
-                ลบรูปภาพ
+                ลบ
               </button>
             )}
           </div>
           <input
             ref={inputRef}
             type="file"
-            accept="image/*"
+            accept={acceptFor([kind])}
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -108,13 +114,16 @@ export function ImageUploader({
           />
           <input
             className={inputClass}
-            placeholder="หรือวาง URL รูปภาพที่นี่"
+            placeholder={`หรือวาง URL ${text.noun}ที่นี่`}
             value={value}
             onChange={(e) => onChange(e.target.value)}
           />
+          {hint && <p className="text-xs text-slate-400">{hint}</p>}
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
       </div>
+
+      <MediaPickerDialog open={pickerOpen} onClose={() => setPickerOpen(false)} onSelect={(m) => onChange(m.url)} kind={kind} />
     </div>
   );
 }

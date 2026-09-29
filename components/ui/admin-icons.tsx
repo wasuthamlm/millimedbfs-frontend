@@ -358,3 +358,55 @@ export function BoltIcon({ filled, ...p }: IconProps & { filled?: boolean }) {
     </svg>
   );
 }
+
+export function VideoIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <rect x="2" y="6" width="14" height="12" rx="2" />
+      <path d="m22 8-6 4 6 4V8Z" />
+    </Svg>
+  );
+}
+
+export function FileIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z" />
+      <path d="M14 3v6h6" />
+    </Svg>
+  );
+}
+
+export function ActivityIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+    </Svg>
+  );
+}
+
+export function InboxIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z" />
+    </Svg>
+  );
+}
+
+export function RotateCcwIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+      <path d="M3 3v5h5" />
+    </Svg>
+  );
+}
+
+export function SparklesIcon(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8" />
+    </Svg>
+  );
+}

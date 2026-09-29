@@ -1,8 +1,8 @@
 "use client";
 
+import { uploadMedia } from "@/lib/upload-client";
 import { useRef, useState, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import {
   ImageIcon,
@@ -14,24 +14,28 @@ import {
   CopyIcon,
   TrashIcon,
   PlusIcon,
+  PencilIcon,
 } from "@/components/ui/admin-icons";
+import { MediaPreview } from "@/components/admin/media/MediaPreview";
+import { MediaDetailPanel, type MediaDetail } from "@/components/admin/media/MediaDetailPanel";
+import { acceptFor } from "@/lib/media-rules";
 import { Pager } from "@/components/admin/Pager";
 import { FolderSelect } from "@/components/admin/media/FolderSelect";
-import { createMediaFolder, deleteMedia, setMediaFolder } from "@/app/admin/media/actions";
+import {
+  createMediaFolder,
+  deleteMedia,
+  deleteMediaFolder,
+  renameMediaFolder,
+  setMediaFolder,
+} from "@/app/admin/media/actions";
 
-type MediaItem = {
-  id: string;
-  url: string;
-  filename: string;
+type MediaItem = MediaDetail & {
   folderId: string | null;
   usageCount: number;
-  usedIn: string[];
 };
 
 type FolderOption = { id: string; name: string; count: number };
 
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"]);
-const MAX_SIZE = 5 * 1024 * 1024;
 
 export function MediaLibraryClient({
   media,
@@ -43,6 +47,7 @@ export function MediaLibraryClient({
   q,
   page,
   totalPages,
+  canDelete,
 }: {
   media: MediaItem[];
   folders: FolderOption[];
@@ -53,6 +58,7 @@ export function MediaLibraryClient({
   q: string;
   page: number;
   totalPages: number;
+  canDelete: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -67,6 +73,9 @@ export function MediaLibraryClient({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const detailItem = media.find((m) => m.id === detailId) ?? null;
+  const activeFolderRow = folders.find((f) => f.id === activeFolder);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const setParam = (key: string, value: string) => {
@@ -97,29 +106,17 @@ export function MediaLibraryClient({
     const list = Array.from(files);
     if (list.length === 0) return;
 
-    for (const file of list) {
-      if (!ALLOWED_TYPES.has(file.type)) {
-        setUploadError("รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, WEBP, GIF)");
-        continue;
-      }
-      if (file.size > MAX_SIZE) {
-        setUploadError("ขนาดไฟล์ต้องไม่เกิน 5MB");
-        continue;
-      }
-    }
-
-    const valid = list.filter((file) => ALLOWED_TYPES.has(file.type) && file.size <= MAX_SIZE);
-    if (valid.length === 0) return;
+    // New uploads land in the folder being viewed (not in the virtual views).
+    const folderId =
+      activeFolder !== "all" && activeFolder !== "uncategorized" && activeFolder !== "unused" ? activeFolder : null;
 
     setUploading(true);
     try {
-      for (const file of valid) {
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch("/api/admin/media", { method: "POST", body: formData });
-        if (!res.ok) {
-          const data = await res.json().catch(() => null);
-          setUploadError(data?.error ?? "อัปโหลดไม่สำเร็จ");
+      for (const file of list) {
+        try {
+          await uploadMedia(file, { folderId });
+        } catch (err) {
+          setUploadError(`${file.name}: ${err instanceof Error ? err.message : "อัปโหลดไม่สำเร็จ"}`);
         }
       }
       router.refresh();
@@ -141,6 +138,22 @@ export function MediaLibraryClient({
     router.refresh();
   };
 
+  const handleRenameFolder = async () => {
+    if (!activeFolderRow) return;
+    const name = window.prompt("ชื่อโฟลเดอร์ใหม่", activeFolderRow.name);
+    if (!name || name.trim() === activeFolderRow.name) return;
+    const result = await renameMediaFolder(activeFolderRow.id, name);
+    if (result.error) setUploadError(result.error);
+    router.refresh();
+  };
+
+  const handleDeleteFolder = async () => {
+    if (!activeFolderRow) return;
+    if (!window.confirm(`ลบโฟลเดอร์ "${activeFolderRow.name}"? ไฟล์ในโฟลเดอร์จะย้ายไป "ยังไม่จัดหมวด" (ไฟล์ไม่ถูกลบ)`)) return;
+    await deleteMediaFolder(activeFolderRow.id);
+    setParam("folder", "");
+  };
+
   const handleAssignFolder = async (ids: string[], folderId: string) => {
     await setMediaFolder(ids, folderId || null);
     router.refresh();
@@ -155,6 +168,7 @@ export function MediaLibraryClient({
       : "";
     if (!window.confirm(`ต้องการลบไฟล์ ${ids.length} รายการใช่หรือไม่?${warning}`)) return;
     await deleteMedia(ids);
+    setDetailId((cur) => (cur && ids.includes(cur) ? null : cur));
     setSelected((prev) => {
       const next = new Set(prev);
       ids.forEach((id) => next.delete(id));
@@ -229,7 +243,7 @@ export function MediaLibraryClient({
       </div>
 
       <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium text-slate-700">Upload Image (แนะนำ: 1200x800px)</label>
+        <label className="text-sm font-medium text-slate-700">อัปโหลดไฟล์ (รูปภาพแนะนำ 1200x800px)</label>
         <div
           onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => {
@@ -249,14 +263,14 @@ export function MediaLibraryClient({
         >
           <UploadCloudIcon className="h-6 w-6 text-slate-400" />
           <p className="text-sm font-medium text-slate-600">
-            {uploading ? "กำลังอัปโหลด..." : "คลิกเพื่ออัปโหลดรูปภาพ"}
+            {uploading ? "กำลังอัปโหลด..." : "คลิกหรือลากไฟล์มาวางเพื่ออัปโหลด"}
           </p>
-          <p className="text-xs text-slate-400">รองรับ JPG, PNG, GIF, WEBP</p>
+          <p className="text-xs text-slate-400">รูปภาพ (ไม่เกิน 5MB), วิดีโอ MP4/WEBM (ไม่เกิน 50MB), PDF (ไม่เกิน 20MB)</p>
         </div>
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept={acceptFor(["image", "video", "document"])}
           multiple
           className="hidden"
           onChange={(e) => {
@@ -302,6 +316,29 @@ export function MediaLibraryClient({
           ไม่ได้ใช้
           <span className="opacity-70">{unusedCount}</span>
         </button>
+
+        {activeFolderRow && (
+          <span className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => void handleRenameFolder()}
+              aria-label="เปลี่ยนชื่อโฟลเดอร์"
+              className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              <PencilIcon className="h-3.5 w-3.5" />
+            </button>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => void handleDeleteFolder()}
+                aria-label="ลบโฟลเดอร์"
+                className="rounded-full p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+              >
+                <TrashIcon className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </span>
+        )}
 
         <div className="flex items-center gap-1.5">
           <input
@@ -349,14 +386,16 @@ export function MediaLibraryClient({
               ]}
               onChange={(value) => void handleAssignFolder(Array.from(selected), value === "__none__" ? "" : value)}
             />
-            <button
-              type="button"
-              onClick={() => void handleDelete(Array.from(selected))}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-            >
-              <TrashIcon className="h-4 w-4" />
-              ลบที่เลือก
-            </button>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => void handleDelete(Array.from(selected))}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+              >
+                <TrashIcon className="h-4 w-4" />
+                ลบที่เลือก
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -378,11 +417,24 @@ export function MediaLibraryClient({
                     className="h-4 w-4 rounded border-slate-300 text-brand-navy focus:ring-brand-navy"
                   />
                 </label>
-                <Image src={item.url} alt={item.filename} fill className="object-cover" unoptimized />
+                <button
+                  type="button"
+                  onClick={() => setDetailId(item.id)}
+                  aria-label={`รายละเอียด ${item.filename}`}
+                  className="absolute inset-0"
+                >
+                  <MediaPreview url={item.url} mimeType={item.mimeType} alt={item.altTh ?? item.filename} />
+                </button>
               </div>
               <div className="flex flex-1 flex-col gap-2 p-3">
                 <div>
-                  <p className="truncate text-sm font-medium text-slate-700">{item.filename}</p>
+                  <button
+                    type="button"
+                    onClick={() => setDetailId(item.id)}
+                    className="block w-full truncate text-left text-sm font-medium text-slate-700 hover:text-brand-navy"
+                  >
+                    {item.filename}
+                  </button>
                   <p className="truncate text-xs text-slate-400" title={item.usedIn.join("\n")}>
                     {item.usageCount > 0 ? `จาก: ${item.usedIn.join(", ")}` : "ยังไม่ได้ใช้"}
                   </p>
@@ -404,14 +456,16 @@ export function MediaLibraryClient({
                     <CopyIcon className="h-3.5 w-3.5" />
                     {copiedId === item.id ? "คัดลอกแล้ว" : "Copy URL"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleDelete([item.id])}
-                    aria-label="ลบไฟล์"
-                    className="inline-flex items-center justify-center rounded-lg border border-red-200 p-1.5 text-red-600 hover:bg-red-50"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete([item.id])}
+                      aria-label="ลบไฟล์"
+                      className="inline-flex items-center justify-center rounded-lg border border-red-200 p-1.5 text-red-600 hover:bg-red-50"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -443,9 +497,15 @@ export function MediaLibraryClient({
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-50">
-                        <Image src={item.url} alt={item.filename} fill className="object-cover" unoptimized />
+                        <MediaPreview url={item.url} mimeType={item.mimeType} alt={item.altTh ?? item.filename} />
                       </div>
-                      <span className="max-w-xs truncate font-medium text-slate-700">{item.filename}</span>
+                      <button
+                        type="button"
+                        onClick={() => setDetailId(item.id)}
+                        className="max-w-xs truncate text-left font-medium text-slate-700 hover:text-brand-navy"
+                      >
+                        {item.filename}
+                      </button>
                     </div>
                   </td>
                   <td className="max-w-xs truncate px-4 py-3 text-slate-500" title={item.usedIn.join("\n")}>
@@ -472,14 +532,16 @@ export function MediaLibraryClient({
                         <CopyIcon className="h-3.5 w-3.5" />
                         {copiedId === item.id ? "คัดลอกแล้ว" : "Copy URL"}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDelete([item.id])}
-                        aria-label="ลบไฟล์"
-                        className="inline-flex items-center justify-center rounded-lg border border-red-200 p-1.5 text-red-600 hover:bg-red-50"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete([item.id])}
+                          aria-label="ลบไฟล์"
+                          className="inline-flex items-center justify-center rounded-lg border border-red-200 p-1.5 text-red-600 hover:bg-red-50"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -490,6 +552,16 @@ export function MediaLibraryClient({
       )}
 
       <Pager page={page} totalPages={totalPages} basePath="/admin/media" extraParams={{ q, folder: activeFolder !== "all" ? activeFolder : undefined }} />
+
+      {detailItem && (
+        <MediaDetailPanel
+          key={detailItem.id}
+          item={detailItem}
+          canDelete={canDelete}
+          onClose={() => setDetailId(null)}
+          onDelete={(id) => void handleDelete([id])}
+        />
+      )}
     </div>
   );
 }

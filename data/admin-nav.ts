@@ -11,6 +11,7 @@ import {
   MailIcon,
   UsersIcon,
   SettingsIcon,
+  ActivityIcon,
 } from "@/components/ui/admin-icons";
 
 export type AdminNavItem = {
@@ -59,5 +60,6 @@ export const adminNavItems: AdminNavItem[] = [
   { label: "การแนะนำ", href: "/admin/recommendations", icon: Share2Icon },
   { label: "ข้อความติดต่อ", href: "/admin/messages", icon: MailIcon },
   { label: "จัดการผู้ใช้งาน", href: "/admin/users", icon: UsersIcon },
+  { label: "บันทึกกิจกรรม", href: "/admin/activity", icon: ActivityIcon },
   { label: "การตั้งค่า", href: "/admin/settings", icon: SettingsIcon },
 ];

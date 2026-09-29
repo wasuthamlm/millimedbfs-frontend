@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import type { PageSection, SectionType } from "@/data/admin-pages";
 import type { SectionType as PrismaSectionType } from "@/lib/generated/prisma/client";
 
@@ -20,7 +21,7 @@ export async function saveSections(
   pageTitleTh: string,
   sections: PageSection[]
 ) {
-  await requirePermission("page.edit");
+  const session = await requirePermission("page.edit");
 
   await prisma.$transaction(async (tx) => {
     const page = await tx.page.upsert({
@@ -55,6 +56,8 @@ export async function saveSections(
       });
     }
   });
+
+  await logActivity(session.user, "update", "Page", { targetLabel: pageTitleTh, details: `บันทึกบล็อก ${sections.length} รายการ (${pageSlug})` });
 
   revalidatePath(`/admin/pages/${pageSlug}`);
   revalidateSite();

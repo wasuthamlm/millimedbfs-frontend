@@ -47,3 +47,23 @@ export async function ensureMediaBucket() {
     if (createError) throw createError;
   }
 }
+
+/** Signed URL the browser can PUT a file to directly (bypasses the ~4.5MB serverless body limit). */
+export async function createSignedUpload(path: string) {
+  const supabase = getServiceClient();
+  const { data, error } = await supabase.storage.from(MEDIA_BUCKET).createSignedUploadUrl(path);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+export async function storageObjectExists(path: string) {
+  const supabase = getServiceClient();
+  const { data, error } = await supabase.storage.from(MEDIA_BUCKET).exists(path);
+  if (error) throw error;
+  return data;
+}
+
+export function publicUrlFor(path: string) {
+  const supabase = getServiceClient();
+  return supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
+}

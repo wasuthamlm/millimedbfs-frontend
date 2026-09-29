@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 
 export type HeaderConfigInput = {
   layout: string;
@@ -32,7 +33,7 @@ export type HeaderConfigInput = {
 };
 
 export async function saveHeaderConfig(input: HeaderConfigInput) {
-  await requirePermission("site.edit");
+  const session = await requirePermission("site.edit");
 
   const data = { ...input, logoTextTh: input.logoTextTh || null, logoTextEn: input.logoTextEn || null };
 
@@ -41,6 +42,8 @@ export async function saveHeaderConfig(input: HeaderConfigInput) {
     update: data,
     create: { id: "singleton", ...data },
   });
+
+  await logActivity(session.user, "update", "Header");
 
   revalidatePath("/admin/site/header");
   revalidateSite();

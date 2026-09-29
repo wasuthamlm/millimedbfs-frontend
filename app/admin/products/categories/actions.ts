@@ -6,6 +6,7 @@ import { revalidateSite } from "@/lib/revalidate-site";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 
 const categorySchema = z.object({
   nameTh: z.string().min(1, "จำเป็นต้องระบุชื่อไทย").max(120),
@@ -21,7 +22,7 @@ function revalidateAll() {
 }
 
 export async function createProductCategory(input: z.infer<typeof categorySchema>) {
-  await requirePermission("category.create");
+  const session = await requirePermission("category.create");
   const parsed = categorySchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
 
@@ -34,6 +35,7 @@ export async function createProductCategory(input: z.infer<typeof categorySchema
         parentId: parsed.data.parentId,
       },
     });
+    await logActivity(session.user, "create", "ProductCategory", { targetLabel: parsed.data.nameTh });
     revalidateAll();
     return {};
   } catch (err) {
@@ -45,7 +47,7 @@ export async function createProductCategory(input: z.infer<typeof categorySchema
 }
 
 export async function updateProductCategory(id: string, input: z.infer<typeof categorySchema>) {
-  await requirePermission("category.edit");
+  const session = await requirePermission("category.edit");
   const parsed = categorySchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
 
@@ -59,6 +61,7 @@ export async function updateProductCategory(id: string, input: z.infer<typeof ca
         parentId: parsed.data.parentId,
       },
     });
+    await logActivity(session.user, "update", "ProductCategory", { targetId: id, targetLabel: parsed.data.nameTh });
     revalidateAll();
     return {};
   } catch (err) {
@@ -70,24 +73,27 @@ export async function updateProductCategory(id: string, input: z.infer<typeof ca
 }
 
 export async function deleteProductCategory(id: string) {
-  await requirePermission("category.delete");
+  const session = await requirePermission("category.delete");
   await prisma.productCategory.delete({ where: { id } });
+  await logActivity(session.user, "delete", "ProductCategory", { targetId: id });
   revalidateAll();
   return {};
 }
 
 export async function toggleProductCategory(id: string, active: boolean) {
-  await requirePermission("category.publish");
+  const session = await requirePermission("category.publish");
   await prisma.productCategory.update({ where: { id }, data: { active } });
+  await logActivity(session.user, (active ? "enable" : "disable"), "ProductCategory", { targetId: id });
   revalidateAll();
   return {};
 }
 
 export async function reorderProductCategories(ids: string[]) {
-  await requirePermission("category.edit");
+  const session = await requirePermission("category.edit");
   await prisma.$transaction(
     ids.map((id, index) => prisma.productCategory.update({ where: { id }, data: { order: index } }))
   );
+  await logActivity(session.user, "reorder", "ProductCategory");
   revalidateAll();
   return {};
 }

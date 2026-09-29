@@ -1,48 +1,64 @@
-import path from "path";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/require-admin";
-import { uploadToStorage } from "@/lib/supabase-storage";
+import { requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
+import { publicUrlFor, storageObjectExists } from "@/lib/supabase-storage";
+import { STORAGE_PATH_RE, validateUpload } from "@/lib/media-rules";
 
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"]);
-const MAX_SIZE = 5 * 1024 * 1024;
+// Step 2 of an upload (see ./upload-url): the browser has PUT the file to
+// storage; record it in the media library. Ported from Base44's registerMediaAsset.
+
+const bodySchema = z.object({
+  path: z.string().regex(STORAGE_PATH_RE),
+  filename: z.string().min(1).max(255),
+  type: z.string().min(1).max(100),
+  size: z.number().int().positive(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  folderId: z.string().nullable().optional(),
+});
 
 export async function POST(request: Request) {
+  let session;
   try {
-    await requireAdmin();
+    session = await requirePermission("media.upload");
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const form = await request.formData().catch(() => null);
-  const file = form?.get("file");
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "ข้อมูลไม่ถูกต้อง" }, { status: 400 });
+  const data = parsed.data;
 
-  if (!file || !(file instanceof File)) {
-    return NextResponse.json({ error: "ไม่พบไฟล์รูปภาพ" }, { status: 400 });
-  }
+  const invalid = validateUpload(data.type, data.size);
+  if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
 
-  if (!ALLOWED_TYPES.has(file.type)) {
-    return NextResponse.json({ error: "รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, WEBP, GIF, SVG)" }, { status: 400 });
-  }
-
-  if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: "ขนาดไฟล์ต้องไม่เกิน 5MB" }, { status: 400 });
-  }
-
-  const ext = path.extname(file.name) || `.${file.type.split("/")[1]}`;
-  const filename = `${crypto.randomUUID()}${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  let url: string;
   try {
-    url = await uploadToStorage(filename, buffer, file.type);
+    if (!(await storageObjectExists(data.path))) {
+      return NextResponse.json({ error: "ไม่พบไฟล์ที่อัปโหลด กรุณาลองใหม่อีกครั้ง" }, { status: 400 });
+    }
   } catch {
-    return NextResponse.json({ error: "อัปโหลดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" }, { status: 500 });
+    return NextResponse.json({ error: "ตรวจสอบไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" }, { status: 500 });
   }
+
+  const folderId =
+    data.folderId && (await prisma.mediaFolder.count({ where: { id: data.folderId } })) ? data.folderId : null;
 
   const media = await prisma.media.create({
-    data: { url, filename: file.name, mimeType: file.type, size: file.size },
+    data: {
+      url: publicUrlFor(data.path),
+      filename: data.filename,
+      mimeType: data.type,
+      size: data.size,
+      width: data.width ?? null,
+      height: data.height ?? null,
+      folderId,
+      uploadedById: session.user.id,
+      source: "upload",
+    },
   });
+  await logActivity(session.user, "upload", "Media", { targetId: media.id, targetLabel: media.filename });
 
   return NextResponse.json({ id: media.id, url: media.url }, { status: 201 });
 }

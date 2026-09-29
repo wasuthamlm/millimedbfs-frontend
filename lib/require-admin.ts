@@ -32,3 +32,12 @@ export async function requirePermission(action: AdminAction) {
   if (!canDo(session.user.role, action)) throw new Error("Forbidden");
   return session;
 }
+
+/** The signed-in admin's current (database) role, or null — for rendering, never throws. */
+export async function getAdminRole(): Promise<AdminRole | null> {
+  try {
+    return (await requireAdmin()).user.role;
+  } catch {
+    return null;
+  }
+}

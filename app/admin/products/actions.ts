@@ -6,6 +6,7 @@ import { revalidateSite } from "@/lib/revalidate-site";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
+import { diffFields, logActivity } from "@/lib/activity-log";
 import { canDo } from "@/lib/admin-roles";
 import { getOrCreateMedia } from "@/lib/media";
 
@@ -83,6 +84,8 @@ export async function createProduct(input: ProductFormInput): Promise<ProductAct
       },
     });
 
+    await logActivity(session.user, "create", "Product", { targetId: product.id, targetLabel: product.nameTh });
+
     revalidateAll();
     return { id: product.id };
   } catch (err) {
@@ -137,6 +140,8 @@ export async function updateProduct(
       },
     });
 
+    await logActivity(session.user, "update", "Product", { targetId: product.id, targetLabel: product.nameTh, changedFields: diffFields(existing, product) });
+
     revalidateAll();
     return { id: product.id };
   } catch (err) {
@@ -148,33 +153,37 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: string): Promise<{ error?: string }> {
-  await requirePermission("product.delete");
+  const session = await requirePermission("product.delete");
 
   const existing = await prisma.product.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบสินค้า" };
 
   await prisma.product.delete({ where: { id } });
+  await logActivity(session.user, "delete", "Product", { targetId: id, targetLabel: existing.nameTh });
   revalidateAll();
   return {};
 }
 
 export async function setProductStatus(id: string, status: "ACTIVE" | "DRAFT" | "ARCHIVED") {
-  await requirePermission("product.publish");
+  const session = await requirePermission("product.publish");
   await prisma.product.update({ where: { id }, data: { status } });
+  await logActivity(session.user, (status === "ACTIVE" ? "publish" : "status_change"), "Product", { targetId: id, details: status });
   revalidateAll();
   return {};
 }
 
 export async function toggleProductFeatured(id: string, featured: boolean) {
-  await requirePermission("product.edit");
+  const session = await requirePermission("product.edit");
   await prisma.product.update({ where: { id }, data: { featured } });
+  await logActivity(session.user, "update", "Product", { targetId: id, changedFields: ["featured"] });
   revalidateAll();
   return {};
 }
 
 export async function toggleProductBestSeller(id: string, bestSeller: boolean) {
-  await requirePermission("product.edit");
+  const session = await requirePermission("product.edit");
   await prisma.product.update({ where: { id }, data: { bestSeller } });
+  await logActivity(session.user, "update", "Product", { targetId: id, changedFields: ["bestSeller"] });
   revalidateAll();
   return {};
 }

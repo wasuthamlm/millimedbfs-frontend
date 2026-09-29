@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import { getOrCreateMedia } from "@/lib/media";
 import type { Banner } from "@/data/admin-banners";
 
@@ -20,7 +21,7 @@ export type BannerConfigInput = {
 };
 
 export async function saveBannerConfig(input: BannerConfigInput) {
-  await requirePermission("banner.edit");
+  const session = await requirePermission("banner.edit");
 
   await prisma.siteBannerConfig.upsert({
     where: { id: "singleton" },
@@ -28,12 +29,14 @@ export async function saveBannerConfig(input: BannerConfigInput) {
     create: { id: "singleton", ...input },
   });
 
+  await logActivity(session.user, "update", "Banner", { targetLabel: "ตั้งค่าสไลด์" });
+
   revalidatePath("/admin/site/banners");
   revalidateSite();
 }
 
 export async function saveBanners(banners: Banner[]) {
-  await requirePermission("banner.edit");
+  const session = await requirePermission("banner.edit");
 
   await prisma.$transaction(async (tx) => {
     await tx.banner.deleteMany({});
@@ -56,6 +59,8 @@ export async function saveBanners(banners: Banner[]) {
       });
     }
   });
+
+  await logActivity(session.user, "update", "Banner", { targetLabel: "แบนเนอร์", details: `${banners.length} รายการ` });
 
   revalidatePath("/admin/site/banners");
   revalidateSite();

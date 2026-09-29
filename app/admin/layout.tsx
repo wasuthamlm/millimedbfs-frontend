@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { auth } from "@/lib/auth";
+import { getAdminRole } from "@/lib/require-admin";
 import { fontVariables } from "@/lib/fonts";
 import { SITE_URL } from "@/lib/site";
 import "../globals.css";
@@ -17,12 +17,12 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  // proxy.ts has already confirmed this role against the database.
-  const session = await auth();
+  // Read from the database, not the JWT, so the sidebar follows role changes immediately.
+  const role = await getAdminRole();
   return (
     <html lang="th" className={`${fontVariables} antialiased`}>
       <body className="flex min-h-screen flex-col">
-        <AdminShell role={session?.user?.role ?? null}>{children}</AdminShell>
+        <AdminShell role={role}>{children}</AdminShell>
       </body>
     </html>
   );

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import { getOrCreateMedia } from "@/lib/media";
 import type { AiProvider } from "@/lib/generated/prisma/client";
 
@@ -41,6 +42,7 @@ export async function changePassword(input: {
 
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
   await prisma.user.update({ where: { email }, data: { passwordHash } });
+  await logActivity(session.user, "password_reset", "User", { targetId: user.id, targetLabel: email, details: "เปลี่ยนรหัสผ่านของตัวเอง" });
 
   return {};
 }
@@ -59,7 +61,7 @@ export type GeneralSettingsInput = {
 };
 
 export async function saveGeneralSettings(input: GeneralSettingsInput) {
-  await requirePermission("settings.edit");
+  const session = await requirePermission("settings.edit");
   await prisma.siteSettings.upsert({
     where: { id: "singleton" },
     update: {
@@ -74,16 +76,18 @@ export async function saveGeneralSettings(input: GeneralSettingsInput) {
       siteUrl: input.siteUrl || null,
     },
   });
+  await logActivity(session.user, "update", "Settings", { targetLabel: "ทั่วไป" });
   revalidateSettings();
 }
 
 export async function saveHomepageSettings(input: { youtubeEmbedUrl: string }) {
-  await requirePermission("settings.edit");
+  const session = await requirePermission("settings.edit");
   await prisma.siteSettings.upsert({
     where: { id: "singleton" },
     update: { youtubeEmbedUrl: input.youtubeEmbedUrl || null },
     create: { id: "singleton", youtubeEmbedUrl: input.youtubeEmbedUrl || null },
   });
+  await logActivity(session.user, "update", "Settings", { targetLabel: "หน้าแรก" });
   revalidateSettings();
 }
 
@@ -100,7 +104,7 @@ export type ContactInfoInput = {
 };
 
 export async function saveContactInfo(input: ContactInfoInput) {
-  await requirePermission("settings.edit");
+  const session = await requirePermission("settings.edit");
   const data = {
     companyNameTh: input.companyNameTh || null,
     companyNameEn: input.companyNameEn || null,
@@ -117,17 +121,19 @@ export async function saveContactInfo(input: ContactInfoInput) {
     update: data,
     create: { id: "singleton", ...data },
   });
+  await logActivity(session.user, "update", "Settings", { targetLabel: "ข้อมูลติดต่อ" });
   revalidateSettings();
 }
 
 export async function saveBrandingSettings(input: { taglineTh: string; taglineEn: string }) {
-  await requirePermission("settings.edit");
+  const session = await requirePermission("settings.edit");
   const data = { tagline: input.taglineTh || null, taglineEn: input.taglineEn || null };
   await prisma.footerContact.upsert({
     where: { id: "singleton" },
     update: data,
     create: { id: "singleton", ...data },
   });
+  await logActivity(session.user, "update", "Settings", { targetLabel: "แบรนด์" });
   revalidateSettings();
 }
 
@@ -139,7 +145,7 @@ export type AnalyticsSettingsInput = {
 };
 
 export async function saveAnalyticsSettings(input: AnalyticsSettingsInput) {
-  await requirePermission("settings.edit");
+  const session = await requirePermission("settings.edit");
   const data = {
     gtmId: input.gtmId || null,
     ga4Id: input.ga4Id || null,
@@ -151,11 +157,12 @@ export async function saveAnalyticsSettings(input: AnalyticsSettingsInput) {
     update: data,
     create: { id: "singleton", ...data },
   });
+  await logActivity(session.user, "update", "Settings", { targetLabel: "Analytics / Tracking" });
   revalidateSettings();
 }
 
 export async function saveSeoDefaults(input: { seoMetaTitleTh: string; seoMetaDescTh: string }) {
-  await requirePermission("settings.edit");
+  const session = await requirePermission("settings.edit");
   const data = {
     seoMetaTitleTh: input.seoMetaTitleTh || null,
     seoMetaDescTh: input.seoMetaDescTh || null,
@@ -165,6 +172,7 @@ export async function saveSeoDefaults(input: { seoMetaTitleTh: string; seoMetaDe
     update: data,
     create: { id: "singleton", ...data },
   });
+  await logActivity(session.user, "update", "Settings", { targetLabel: "SEO เริ่มต้น" });
   revalidateSettings();
 }
 
@@ -179,7 +187,7 @@ export type SocialSettingsInput = {
 };
 
 export async function saveSocialSettings(input: SocialSettingsInput) {
-  await requirePermission("settings.edit");
+  const session = await requirePermission("settings.edit");
   const data = {
     facebookUrl: input.facebookUrl || null,
     instagramUrl: input.instagramUrl || null,
@@ -194,11 +202,12 @@ export async function saveSocialSettings(input: SocialSettingsInput) {
     update: data,
     create: { id: "singleton", ...data },
   });
+  await logActivity(session.user, "update", "Settings", { targetLabel: "โซเชียล" });
   revalidateSettings();
 }
 
 export async function saveSiteAssets(input: { siteLogoUrl: string; faviconUrl: string; loginBgUrl: string }) {
-  await requirePermission("settings.edit");
+  const session = await requirePermission("settings.edit");
 
   const [siteLogo, favicon, loginBg] = await Promise.all([
     input.siteLogoUrl ? getOrCreateMedia(prisma, input.siteLogoUrl) : null,
@@ -216,6 +225,7 @@ export async function saveSiteAssets(input: { siteLogoUrl: string; faviconUrl: s
     update: data,
     create: { id: "singleton", ...data },
   });
+  await logActivity(session.user, "update", "Settings", { targetLabel: "โลโก้ / Favicon" });
   revalidateSettings();
   revalidatePath("/admin/login");
 }
@@ -234,24 +244,26 @@ export type GlobalThemeInput = {
 };
 
 export async function saveGlobalTheme(input: GlobalThemeInput) {
-  await requirePermission("settings.edit");
+  const session = await requirePermission("settings.edit");
   await prisma.globalTheme.upsert({
     where: { id: "singleton" },
     update: input,
     create: { id: "singleton", ...input },
   });
+  await logActivity(session.user, "update", "Settings", { targetLabel: "ธีมเว็บไซต์" });
   revalidateSettings();
 }
 
 // ───────────────────────── AI Settings tab ─────────────────────────
 
 export async function saveAiSettings(input: { provider: AiProvider; model: string }) {
-  await requirePermission("settings.edit");
+  const session = await requirePermission("settings.edit");
   await prisma.aiSettings.upsert({
     where: { id: "singleton" },
     update: { provider: input.provider, model: input.model || null },
     create: { id: "singleton", provider: input.provider, model: input.model || null },
   });
+  await logActivity(session.user, "update", "Settings", { targetLabel: "AI" });
   revalidatePath("/admin/settings");
   revalidatePath("/admin/translations");
 }

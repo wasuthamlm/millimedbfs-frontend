@@ -6,6 +6,7 @@ import { revalidateSite } from "@/lib/revalidate-site";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import { canDo } from "@/lib/admin-roles";
 
 const pageSchema = z.object({
@@ -43,6 +44,8 @@ export async function createPage(input: PageFormInput): Promise<PageActionResult
       },
     });
 
+    await logActivity(session.user, "create", "Page", { targetId: page.id, targetLabel: page.titleTh });
+
     revalidatePath("/admin/pages");
     revalidateSite();
     return { slug: page.slug };
@@ -55,8 +58,9 @@ export async function createPage(input: PageFormInput): Promise<PageActionResult
 }
 
 export async function setPageStatus(id: string, status: "DRAFT" | "PUBLISHED"): Promise<{ error?: string }> {
-  await requirePermission("page.publish");
+  const session = await requirePermission("page.publish");
   await prisma.page.update({ where: { id }, data: { status } });
+  await logActivity(session.user, (status === "PUBLISHED" ? "publish" : "unpublish"), "Page", { targetId: id });
   revalidatePath("/admin/pages");
   revalidateSite();
   return {};
@@ -71,7 +75,7 @@ export type PageSeoInput = {
 };
 
 export async function setPageSeo(id: string, input: PageSeoInput): Promise<{ error?: string }> {
-  await requirePermission("page.edit");
+  const session = await requirePermission("page.edit");
   await prisma.page.update({
     where: { id },
     data: {
@@ -82,36 +86,40 @@ export async function setPageSeo(id: string, input: PageSeoInput): Promise<{ err
       seoNoIndex: input.seoNoIndex,
     },
   });
+  await logActivity(session.user, "update", "Page", { targetId: id, changedFields: ["seo"] });
   revalidatePath("/admin/pages");
   revalidateSite();
   return {};
 }
 
 export async function archivePages(ids: string[]): Promise<{ error?: string }> {
-  await requirePermission("page.delete");
+  const session = await requirePermission("page.delete");
   if (ids.length === 0) return {};
   await prisma.page.updateMany({ where: { id: { in: ids } }, data: { archived: true } });
+  await logActivity(session.user, "trash", "Page", { details: `${ids.length} หน้า` });
   revalidatePath("/admin/pages");
   revalidateSite();
   return {};
 }
 
 export async function restorePages(ids: string[]): Promise<{ error?: string }> {
-  await requirePermission("page.delete");
+  const session = await requirePermission("page.delete");
   if (ids.length === 0) return {};
   await prisma.page.updateMany({ where: { id: { in: ids } }, data: { archived: false } });
+  await logActivity(session.user, "restore", "Page", { details: `${ids.length} หน้า` });
   revalidatePath("/admin/pages");
   revalidateSite();
   return {};
 }
 
 export async function deletePage(id: string): Promise<{ error?: string }> {
-  await requirePermission("page.delete");
+  const session = await requirePermission("page.delete");
 
   const existing = await prisma.page.findUnique({ where: { id } });
   if (!existing) return { error: "ไม่พบหน้านี้" };
 
   await prisma.page.delete({ where: { id } });
+  await logActivity(session.user, "delete", "Page", { targetId: id, targetLabel: existing.titleTh });
   revalidatePath("/admin/pages");
   revalidateSite();
   return {};

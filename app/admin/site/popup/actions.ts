@@ -4,10 +4,11 @@ import { revalidatePath } from "next/cache";
 import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import type { PopupConfig } from "@/data/admin-popup";
 
 export async function savePopupConfig(config: PopupConfig) {
-  await requirePermission("popup.edit");
+  const session = await requirePermission("popup.edit");
 
   let imageId: string | undefined;
   if (config.image) {
@@ -47,6 +48,8 @@ export async function savePopupConfig(config: PopupConfig) {
       endDate: new Date(config.endDate),
     },
   });
+
+  await logActivity(session.user, "update", "Popup");
 
   revalidatePath("/admin/site/popup");
   revalidateSite();

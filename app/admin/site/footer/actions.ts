@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import type { FooterColumn } from "@/data/admin-footer";
 
 type FooterContactInput = {
@@ -27,7 +28,7 @@ export async function saveFooterConfig(
   contact: FooterContactInput,
   theme: FooterThemeInput
 ) {
-  await requirePermission("site.edit");
+  const session = await requirePermission("site.edit");
 
   await prisma.$transaction(async (tx) => {
     await tx.footerColumn.deleteMany({});
@@ -69,6 +70,8 @@ export async function saveFooterConfig(
       },
     });
   });
+
+  await logActivity(session.user, "update", "Footer");
 
   revalidatePath("/admin/site/footer");
   revalidateSite();

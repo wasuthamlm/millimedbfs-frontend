@@ -4,10 +4,11 @@ import { revalidatePath } from "next/cache";
 import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
+import { logActivity } from "@/lib/activity-log";
 import type { Widget } from "@/data/admin-widgets";
 
 export async function saveWidgets(widgets: Widget[]) {
-  await requirePermission("widget.edit");
+  const session = await requirePermission("widget.edit");
 
   await prisma.$transaction(
     widgets.map((widget) =>
@@ -17,6 +18,8 @@ export async function saveWidgets(widgets: Widget[]) {
       })
     )
   );
+
+  await logActivity(session.user, "update", "Widget");
 
   revalidatePath("/admin/site/widgets");
   revalidateSite();

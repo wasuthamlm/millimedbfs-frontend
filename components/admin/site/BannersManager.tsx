@@ -1,5 +1,6 @@
 "use client";
 
+import { uploadMedia } from "@/lib/upload-client";
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { PlusIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, XCircleIcon } from "@/components/ui/admin-icons";
@@ -21,17 +22,10 @@ function BannerImagePicker({ image, onChange }: { image: string; onChange: (url:
     setError(null);
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/admin/media", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "อัปโหลดไม่สำเร็จ");
-        return;
-      }
-      onChange(data.url);
-    } catch {
-      setError("อัปโหลดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      const media = await uploadMedia(file, { allowed: ["image"] });
+      onChange(media.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "อัปโหลดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
