@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { ui, uiFormat } from "@/lib/i18n/ui";
 
 export function Pager({
   page,
   totalPages,
   basePath,
   extraParams,
+  locale = "th",
 }: {
+  /** Language of the labels (the public site passes the visitor's locale). */
+  locale?: string;
   page: number;
   totalPages: number;
   basePath: string;
@@ -31,22 +35,22 @@ export function Pager({
   return (
     <div className="flex items-center justify-between gap-4 px-1">
       <p className="text-sm text-slate-500">
-        หน้า {page} จาก {totalPages}
+        {uiFormat(locale, "pageOf", { page, total: totalPages })}
       </p>
       <div className="flex items-center gap-2">
         {page > 1 ? (
           <Link href={hrefFor(page - 1)} className={linkClass}>
-            ก่อนหน้า
+            {ui(locale, "previous")}
           </Link>
         ) : (
-          <span className={disabledClass}>ก่อนหน้า</span>
+          <span className={disabledClass}>{ui(locale, "previous")}</span>
         )}
         {page < totalPages ? (
           <Link href={hrefFor(page + 1)} className={cn(linkClass)}>
-            ถัดไป
+            {ui(locale, "next")}
           </Link>
         ) : (
-          <span className={disabledClass}>ถัดไป</span>
+          <span className={disabledClass}>{ui(locale, "next")}</span>
         )}
       </div>
     </div>

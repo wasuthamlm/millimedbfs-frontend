@@ -20,7 +20,7 @@ export default function RootError({
       <button
         type="button"
         onClick={reset}
-        className="inline-flex items-center justify-center rounded-full bg-brand-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-navy-dark"
+        className="inline-flex items-center justify-center rounded-full bg-brand-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-navy-hover"
       >
         ลองใหม่อีกครั้ง
       </button>

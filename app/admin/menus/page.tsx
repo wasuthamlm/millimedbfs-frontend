@@ -3,6 +3,8 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { ListIconGlyph } from "@/components/ui/admin-icons";
 import { MenuManager, type MenuNode } from "@/components/admin/menus/MenuManager";
 import { prisma } from "@/lib/prisma";
+import { canDo } from "@/lib/admin-roles";
+import { getAdminRole } from "@/lib/require-admin";
 
 export const metadata: Metadata = { title: "เมนูเว็บไซต์" };
 export const dynamic = "force-dynamic";
@@ -27,16 +29,23 @@ export default async function AdminMenusPage() {
       labelEn: row.labelEn,
       href: row.href,
       active: row.active,
+      parentId: row.parentId,
+      openInNewTab: row.openInNewTab,
       children: buildTree(row.id),
     }));
   }
 
   const tree = buildTree(null);
+  const role = await getAdminRole();
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader icon={ListIconGlyph} title="Menu Manager" subtitle="จัดการเมนูนำทางของเว็บไซต์แบบหลายระดับ" />
-      <MenuManager initialTree={tree} />
+      <MenuManager
+        initialTree={tree}
+        canDelete={canDo(role, "menu.delete")}
+        canReorderTop={canDo(role, "menu.reorder-top")}
+      />
     </div>
   );
 }

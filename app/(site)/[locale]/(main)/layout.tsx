@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ScrollToTopButton } from "@/components/layout/ScrollToTopButton";
 import { SecretAdminAccess } from "@/components/layout/SecretAdminAccess";
-import { Popup } from "@/components/layout/Popup";
-import { CookieConsent } from "@/components/layout/CookieConsent";
-import { TrackingConsentGate } from "@/components/layout/TrackingConsentGate";
+import { Popups } from "@/components/layout/Popups";
 import { SocialFloatButtons, type SocialFloatItem } from "@/components/layout/SocialFloatButtons";
+import { FloatingWidgets } from "@/components/layout/FloatingWidgets";
 import { prisma } from "@/lib/prisma";
-import { globalThemeStyle } from "@/lib/theme";
+import { loadLocalizer } from "@/lib/i18n/localize";
+import { FacebookIcon, InstagramIcon, LineIcon, TikTokIcon, YoutubeIcon } from "@/components/ui/social-icons";
+import { getSiteConfig, SITE_CONFIG_KEYS } from "@/lib/site-config";
+import { DEFAULT_COOKIE_CONFIG } from "@/lib/i18n/cookie-strings";
+import { SiteTracking, SiteCookieConsent } from "@/components/layout/SiteTracking";
+import { EMPTY_FOOTER_BLOCKS } from "@/lib/footer-blocks";
+import { globalThemeStyle, themeFontHrefs } from "@/lib/theme";
 import { buildOpenGraph, SITE_NAME, SITE_URL } from "@/lib/site";
 import type { NavLink } from "@/data/nav";
 
@@ -37,13 +41,20 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const [navRows, footerColumns, footerContact, widgets, popupConfig, headerConfig, footerConfig, siteSettings, globalTheme] =
+export default async function SiteLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  const [navRows, footerColumns, footerContact, widgets, popupRows, headerConfig, footerConfig, siteSettings, globalTheme] =
     await Promise.all([
       prisma.navLink.findMany({
         where: { placement: "HEADER", active: true },
         orderBy: { order: "asc" },
-        include: { children: { where: { active: true }, orderBy: { order: "asc" } } },
+        include: {
+          children: {
+            where: { active: true },
+            orderBy: { order: "asc" },
+            include: { children: { where: { active: true }, orderBy: { order: "asc" } } },
+          },
+        },
       }),
       prisma.footerColumn.findMany({
         orderBy: { order: "asc" },
@@ -51,23 +62,43 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       }),
       prisma.footerContact.findUnique({ where: { id: "singleton" } }),
       prisma.widget.findMany(),
-      prisma.popupConfig.findUnique({ where: { id: "singleton" }, include: { image: true } }),
+      prisma.popup.findMany({
+        where: { status: "PUBLISHED", active: true, deletedAt: null },
+        orderBy: [{ order: "asc" }, { createdAt: "desc" }],
+      }),
       prisma.siteHeaderConfig.findUnique({ where: { id: "singleton" } }),
       prisma.footerConfig.findUnique({ where: { id: "singleton" } }),
       prisma.siteSettings.findUnique({ where: { id: "singleton" }, include: { siteLogo: true } }),
       prisma.globalTheme.findUnique({ where: { id: "singleton" } }),
     ]);
+  const [cookieConfig, footerBlocks] = await Promise.all([
+    getSiteConfig(SITE_CONFIG_KEYS.cookieConsent, DEFAULT_COOKIE_CONFIG),
+    getSiteConfig(SITE_CONFIG_KEYS.footerBlocks, EMPTY_FOOTER_BLOCKS),
+  ]);
 
-  const navLinks: NavLink[] = navRows
-    .filter((row) => !row.parentId)
-    .map((row) => ({
-      id: row.id,
-      label: row.labelTh,
-      href: row.href,
-      children: row.children.length
-        ? row.children.map((child) => ({ id: child.id, label: child.labelTh, href: child.href }))
-        : undefined,
-    }));
+  // Menu labels: EN column, Translation rows (NAV_LINK/label) for other languages, else Thai.
+  const navIds = navRows.flatMap((r) => [r.id, ...r.children.flatMap((c) => [c.id, ...c.children.map((g) => g.id)])]);
+  const tNav = await loadLocalizer(locale, [["NAV_LINK", navIds]]);
+  type NavRow = { id: string; labelTh: string; labelEn: string | null; href: string; openInNewTab: boolean; parentId: string | null };
+  const toLink = (row: NavRow & { children?: (NavRow & { children?: NavRow[] })[] }): NavLink => ({
+    id: row.id,
+    label: tNav("NAV_LINK", row.id, "label", row.labelTh, row.labelEn),
+    href: row.href,
+    newTab: row.openInNewTab,
+    children: row.children?.length ? row.children.map(toLink) : undefined,
+  });
+  const navLinks: NavLink[] = navRows.filter((row) => !row.parentId).map(toLink);
+  const languageRows = await prisma.language.findMany({ where: { enabled: true }, orderBy: { order: "asc" } });
+  const languages = languageRows.map((l) => ({ code: l.code, label: l.labelLocal }));
+  const headerSocial = siteSettings?.showSocialInHeader
+    ? [
+        { href: siteSettings.facebookUrl, label: "Facebook", icon: <FacebookIcon className="h-4 w-4" /> },
+        { href: siteSettings.instagramUrl, label: "Instagram", icon: <InstagramIcon className="h-4 w-4" /> },
+        { href: siteSettings.youtubeUrl, label: "YouTube", icon: <YoutubeIcon className="h-4 w-4" /> },
+        { href: siteSettings.tiktokUrl, label: "TikTok", icon: <TikTokIcon className="h-4 w-4" /> },
+        { href: siteSettings.lineUrl, label: "LINE", icon: <LineIcon className="h-4 w-4" /> },
+      ].filter((x): x is { href: string; label: string; icon: React.JSX.Element } => !!x.href)
+    : [];
 
   const widgetByKey = new Map(widgets.map((w) => [w.key, w]));
   const scrollToTopEnabled = widgetByKey.get("scroll-to-top")?.enabled ?? false;
@@ -81,16 +112,11 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     })
     .filter((item): item is SocialFloatItem => item !== null);
 
-  const popupData = popupConfig?.enabled
-    ? {
-        titleTh: popupConfig.titleTh ?? "",
-        image: popupConfig.image?.url ?? "",
-        link: popupConfig.link,
-        frequency: popupConfig.frequency,
-        startDate: popupConfig.startDate?.toISOString() ?? null,
-        endDate: popupConfig.endDate?.toISOString() ?? null,
-      }
-    : null;
+  const popups = popupRows.map((p) => ({
+    ...p,
+    startDate: p.startDate?.toISOString() ?? null,
+    endDate: p.endDate?.toISOString() ?? null,
+  }));
 
   const organizationJsonLd = {
     "@context": "https://schema.org",
@@ -117,66 +143,18 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="flex min-h-full flex-1 flex-col" style={globalTheme ? globalThemeStyle(globalTheme) : undefined}>
+      {themeFontHrefs(globalTheme).map((href) => (
+        // React hoists these into <head>; fonts.googleapis.com is allowed by the CSP.
+        <link key={href} rel="stylesheet" href={href} precedence="default" />
+      ))}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
       />
-      {cookieConsentEnabled && (
-        // Google Consent Mode v2 — everything optional starts denied, before GTM/gtag
-        // parse any tags. Ported from the legacy site's index.html. A plain inline
-        // <script> (like the JSON-LD block above) rather than next/script: next/script's
-        // beforeInteractive strategy is only hoisted into <head> server-side when
-        // declared in the app-level ROOT layout — here, in the nested (site) layout, it
-        // gets client-injected like any other strategy, arriving too late. A literal
-        // <script> tag has no such caveat: it's part of the server HTML and runs
-        // synchronously in document order, ahead of the afterInteractive GTM/GA4
-        // <Script> tags right below it. gtag.js and GTM both read this signal on their
-        // own once they load, so those scripts stay unconditional — only Meta/TikTok
-        // (which have no built-in consent awareness) are gated to not load at all, via
-        // TrackingConsentGate further down.
-        <script
-          id="consent-default"
-          dangerouslySetInnerHTML={{
-            __html:
-              "window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',functionality_storage:'granted',security_storage:'granted',wait_for_update:500});",
-          }}
-        />
-      )}
-      {siteSettings?.gtmId && (
-        <Script id="gtm" strategy="afterInteractive">
-          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${siteSettings.gtmId}');`}
-        </Script>
-      )}
-      {siteSettings?.ga4Id && (
-        <>
-          <Script src={`https://www.googletagmanager.com/gtag/js?id=${siteSettings.ga4Id}`} strategy="afterInteractive" />
-          <Script id="ga4" strategy="afterInteractive">
-            {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${siteSettings.ga4Id}');`}
-          </Script>
-        </>
-      )}
-      {cookieConsentEnabled ? (
-        // Consent banner is active: Meta/TikTok only load after the visitor grants
-        // marketing consent (client-gated — see components/layout/TrackingConsentGate.tsx).
-        <TrackingConsentGate fbPixelId={siteSettings?.fbPixelId} tiktokPixelId={siteSettings?.tiktokPixelId} />
-      ) : (
-        // Consent banner is off: preserve the previous unconditional behavior — a site
-        // owner who hasn't turned on the compliance banner shouldn't see pixels silently
-        // stop firing.
-        <>
-          {siteSettings?.fbPixelId && (
-            <Script id="fb-pixel" strategy="afterInteractive">
-              {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${siteSettings.fbPixelId}');fbq('track','PageView');`}
-            </Script>
-          )}
-          {siteSettings?.tiktokPixelId && (
-            <Script id="tiktok-pixel" strategy="afterInteractive">
-              {`!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.load=function(e,n){var i="https://analytics.tiktok.com/i18n/pixel/events.js";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=i,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=document.createElement("script");o.type="text/javascript",o.async=!0,o.src=i+"?sdkid="+e+"&lib="+t;var a=document.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};ttq.load('${siteSettings.tiktokPixelId}');ttq.page();}(window,document,'ttq');`}
-            </Script>
-          )}
-        </>
-      )}
+      <SiteTracking siteSettings={siteSettings} consentEnabled={cookieConsentEnabled} />
       <Navbar
+        languages={languages}
+        socialLinks={headerSocial}
         navLinks={navLinks}
         logoUrl={siteSettings?.siteLogo?.url}
         siteName={siteSettings?.siteNameTh}
@@ -194,9 +172,16 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
                 activeBgColor: headerConfig.activeBgColor,
                 activeTextColor: headerConfig.activeTextColor,
                 iconTextColor: headerConfig.iconTextColor,
+                logoMode: headerConfig.logoMode,
                 logoTextTh: headerConfig.logoTextTh,
+                logoTextEn: headerConfig.logoTextEn,
                 menuWrap: headerConfig.menuWrap,
                 menuFontSize: headerConfig.menuFontSize,
+                menuLevels: headerConfig.menuLevels,
+                submenuStyle: headerConfig.submenuStyle,
+                submenuChildBehavior: headerConfig.submenuChildBehavior,
+                showSearch: headerConfig.showSearch,
+                showLanguage: headerConfig.showLanguage,
               }
             : undefined
         }
@@ -207,6 +192,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         contact={footerContact}
         theme={footerConfig}
         logoUrl={siteSettings?.siteLogo?.url}
+        blocks={footerBlocks}
+        policyLinks={cookieConfig.policyLinks}
+        lang={locale}
         social={
           siteSettings
             ? {
@@ -220,9 +208,28 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         }
       />
       {scrollToTopEnabled && <ScrollToTopButton />}
-      {cookieConsentEnabled && <CookieConsent />}
-      <SocialFloatButtons items={socialFloats} />
-      <Popup data={popupData?.image ? popupData : null} />
+      {cookieConsentEnabled && <SiteCookieConsent locale={locale} config={cookieConfig} />}
+      <SocialFloatButtons items={socialFloats} locale={locale} />
+      <FloatingWidgets
+        lang={locale === "en" ? "en" : "th"}
+        widgets={widgets
+          .filter((w) => w.type && w.enabled)
+          .sort((a, b) => a.order - b.order)
+          .map((w) => ({
+            id: w.id,
+            labelTh: w.labelTh ?? w.name,
+            labelEn: w.labelEn,
+            type: w.type!,
+            icon: w.icon ?? "external-link",
+            link: w.link,
+            phone: w.phone,
+            position: w.position,
+            design: w.design,
+            color: w.color,
+            openInNewTab: w.openInNewTab,
+          }))}
+      />
+      <Popups popups={popups} lang={locale === "en" ? "en" : "th"} />
       <SecretAdminAccess />
     </div>
   );

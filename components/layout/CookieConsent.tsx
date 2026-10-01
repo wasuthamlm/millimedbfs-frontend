@@ -3,40 +3,28 @@
 // Full Google Consent Mode v2 banner + settings dialog, ported from the legacy site's
 // src/components/public/CookieConsent.jsx (necessary/analytics/marketing categories,
 // Accept all / Reject all / Customize, footer re-entry point, focus trap). Restyled to
-// this project's brand tokens instead of the legacy teal palette. Text is hardcoded
-// Thai only — this project has no i18n system (the legacy source keeps 9 locales via an
-// admin-editable SiteSetting; out of scope here).
+// this project's brand tokens instead of the legacy teal palette. Copy comes from
+// lib/i18n/cookie-strings.ts with the admin overrides from Admin → Cookie Consent.
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useConsent } from "@/lib/consent/useConsent";
 import { getConsent } from "@/lib/consent/consentStore";
 import { subscribeOpenCookieSettings } from "@/lib/consent/openCookieSettings";
+import { DEFAULT_COOKIE_CONFIG, getCookieStrings, type CookieStrings, type PolicyLink } from "@/lib/i18n/cookie-strings";
 
-const STRINGS = {
-  title: "เราใช้คุกกี้",
-  message:
-    "เว็บไซต์นี้ใช้คุกกี้เพื่อเพิ่มประสิทธิภาพการใช้งานและวิเคราะห์การเข้าชม โดยคุณสามารถจัดการความยินยอมได้ตามต้องการ",
-  accept: "ยอมรับทั้งหมด",
-  reject: "ปฏิเสธ",
-  settings: "ตั้งค่า",
-  save: "บันทึกการตั้งค่า",
-  necessary: "คุกกี้ที่จำเป็น",
-  necessaryDesc: "จำเป็นต่อการทำงานพื้นฐานของเว็บไซต์ ไม่สามารถปิดได้",
-  analytics: "คุกกี้เพื่อการวิเคราะห์",
-  analyticsDesc: "ช่วยให้เราเข้าใจการใช้งานเว็บไซต์เพื่อปรับปรุงประสบการณ์",
-  marketing: "คุกกี้เพื่อการตลาด",
-  marketingDesc: "ใช้เพื่อแสดงเนื้อหาและโฆษณาที่เกี่ยวข้องกับคุณ",
-  always: "เปิดเสมอ",
-  close: "ปิด",
-  savedNotice: "บันทึกการตั้งค่าคุกกี้ของคุณแล้ว",
-};
-
-const POLICY_LINKS = [
-  { href: "/privacy-policy", label: "นโยบายความเป็นส่วนตัว" },
-  { href: "/cookie-policy", label: "นโยบายการใช้คุกกี้" },
-];
-
-export function CookieConsent() {
+export function CookieConsent({
+  strings = getCookieStrings("th"),
+  policyLinks = DEFAULT_COOKIE_CONFIG.policyLinks,
+  lang = "th",
+  preview = false,
+}: {
+  strings?: CookieStrings;
+  policyLinks?: PolicyLink[];
+  lang?: string;
+  /** Admin preview: always show the banner and never store consent. */
+  preview?: boolean;
+} = {}) {
+  const STRINGS = strings;
   const { consentReady, decided, saveConsent } = useConsent();
 
   const [showSettings, setShowSettings] = useState(false);
@@ -62,7 +50,7 @@ export function CookieConsent() {
 
   // Banner and dialog are independent: the banner only greets undecided visitors,
   // while the dialog is available at any time — including after a decision was made.
-  const showBanner = consentReady && !decided;
+  const showBanner = preview || (consentReady && !decided);
   const open = showBanner || showSettings;
 
   // Focus management + Escape (Escape closes the dialog without recording consent)
@@ -94,6 +82,7 @@ export function CookieConsent() {
   }, [showSettings]);
 
   const persist = (value: { analytics: boolean; marketing: boolean }) => {
+    if (preview) return;
     const result = saveConsent(value);
     setShowSettings(false);
     if (!result.reloaded) {
@@ -128,7 +117,7 @@ export function CookieConsent() {
               <div className="flex-1">
                 <h3 className="mb-1 text-base font-semibold text-slate-900">{STRINGS.title}</h3>
                 <p className="text-sm leading-relaxed text-slate-500">{STRINGS.message}</p>
-                <PolicyLinks />
+                <PolicyLinks links={policyLinks} lang={lang} />
               </div>
             </div>
             <div className="mt-4 flex flex-wrap justify-end gap-2">
@@ -150,7 +139,7 @@ export function CookieConsent() {
               </button>
               <button
                 onClick={acceptAll}
-                className="rounded-lg bg-brand-navy px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-navy-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40"
+                className="rounded-lg bg-brand-navy px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-navy-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40"
               >
                 {STRINGS.accept}
               </button>
@@ -194,7 +183,7 @@ export function CookieConsent() {
                 onChange={(v) => setPrefs((p) => ({ ...p, marketing: v }))}
               />
             </div>
-            <PolicyLinks />
+            <PolicyLinks links={policyLinks} lang={lang} />
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <button
                 onClick={rejectAll}
@@ -204,7 +193,7 @@ export function CookieConsent() {
               </button>
               <button
                 onClick={saveCustom}
-                className="rounded-lg bg-brand-navy px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-navy-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40"
+                className="rounded-lg bg-brand-navy px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-navy-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40"
               >
                 {STRINGS.save}
               </button>
@@ -216,16 +205,18 @@ export function CookieConsent() {
   );
 }
 
-function PolicyLinks() {
+function PolicyLinks({ links, lang }: { links: PolicyLink[]; lang: string }) {
+  const visible = links.filter((l) => l.url && l.url !== "#");
+  if (!visible.length) return null;
   return (
     <div className="mt-3 flex flex-wrap gap-4">
-      {POLICY_LINKS.map((link) => (
+      {visible.map((link) => (
         <Link
-          key={link.href}
-          href={link.href}
+          key={link.url}
+          href={link.url}
           className="rounded text-xs text-slate-500 underline hover:text-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40"
         >
-          {link.label}
+          {(lang === "en" && link.labelEn) || link.labelTh}
         </Link>
       ))}
     </div>

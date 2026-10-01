@@ -1,5 +1,6 @@
 import type { Media, Post } from "@/lib/generated/prisma/client";
 import { postPath } from "@/lib/public-urls";
+import type { Localizer } from "@/lib/i18n/localize";
 
 const FALLBACK_IMAGE = "/images/articles/cold-water-sore-throat.svg";
 
@@ -31,23 +32,24 @@ export type NewsView = {
   featured?: boolean;
 };
 
-export function toArticleView(post: PostWithCover): ArticleView {
+// Pass a Localizer (lib/i18n/localize) to get titles/excerpts in the visitor's language.
+export function toArticleView(post: PostWithCover, t?: Localizer): ArticleView {
   return {
     slug: post.slug,
     href: postPath(post),
-    title: post.titleTh,
+    title: t ? t("ARTICLE", post.id, "title", post.titleTh, post.titleEn) : post.titleTh,
     image: post.coverImage?.url ?? FALLBACK_IMAGE,
     publishedAt: (post.publishedAt ?? post.createdAt).toISOString(),
     category: post.category ?? undefined,
   };
 }
 
-export function toNewsView(post: PostWithCover): NewsView {
+export function toNewsView(post: PostWithCover, t?: Localizer): NewsView {
   return {
     slug: post.slug,
     href: postPath(post),
-    title: post.titleTh,
-    excerpt: post.excerptTh ?? undefined,
+    title: t ? t("ARTICLE", post.id, "title", post.titleTh, post.titleEn) : post.titleTh,
+    excerpt: (t ? t("ARTICLE", post.id, "excerpt", post.excerptTh, post.excerptEn) : post.excerptTh) || undefined,
     image: post.coverImage?.url ?? FALLBACK_IMAGE,
     publishedAt: (post.publishedAt ?? post.createdAt).toISOString(),
     featured: post.featured,

@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function AdminSettingsPage() {
-  const [siteSettings, footerContact, globalTheme, aiSettings] = await Promise.all([
+  const [siteSettings, footerContact, globalTheme, aiSettings, languages] = await Promise.all([
     prisma.siteSettings.findUnique({
       where: { id: "singleton" },
       include: { siteLogo: true, favicon: true, loginBg: true },
@@ -14,6 +14,7 @@ export default async function AdminSettingsPage() {
     prisma.footerContact.findUnique({ where: { id: "singleton" } }),
     prisma.globalTheme.findUnique({ where: { id: "singleton" } }),
     prisma.aiSettings.findUnique({ where: { id: "singleton" } }),
+    prisma.language.findMany({ orderBy: { order: "asc" } }),
   ]);
 
   return (
@@ -66,7 +67,10 @@ export default async function AdminSettingsPage() {
           colorBackground: globalTheme?.colorBackground ?? "#dfedfb",
           colorText: globalTheme?.colorText ?? "#121212",
           buttonRadius: globalTheme?.buttonRadius ?? "soft-sm",
+          fontHeaderCustom: globalTheme?.fontHeaderCustom ?? "",
+          fontBodyCustom: globalTheme?.fontBodyCustom ?? "",
         }}
+        languages={languages.map((l) => ({ code: l.code, labelLocal: l.labelLocal, enabled: l.enabled }))}
         aiSettings={{
           provider: aiSettings?.provider ?? "GEMINI",
           model: aiSettings?.model ?? "",

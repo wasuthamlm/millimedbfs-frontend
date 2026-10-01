@@ -142,8 +142,52 @@ async function anthropicJson<T>(model: string, { system, user, imageUrl }: Promp
  * schema server-side (structured outputs); OpenAI/Gemini run in JSON mode and
  * the result is validated here.
  */
+// Provider overload / rate-limit / gateway errors are usually over within seconds.
+const TRANSIENT_AI_ERROR = /\b(429|500|502|503|504|529)\b|UNAVAILABLE|RESOURCE_EXHAUSTED|overloaded|rate.?limit|high demand|ECONNRESET|ETIMEDOUT|fetch failed/i;
+const AI_ATTEMPTS = 4;
+
+const OVERLOADED = "ผู้ให้บริการ AI ไม่ว่างชั่วคราว (มีผู้ใช้งานมาก) กรุณาลองใหม่อีกครั้งในอีกสักครู่";
+const isTransient = (err: unknown) => TRANSIENT_AI_ERROR.test(err instanceof Error ? err.message : String(err));
+
+/** Retries transient provider errors with backoff. */
+async function withRetry<T>(fn: () => Promise<T>, attempts = AI_ATTEMPTS): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (!isTransient(err) || attempt >= attempts) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 1500 * 2 ** (attempt - 1)));
+    }
+  }
+}
+
+/**
+ * The configured provider first (with retries); if it stays overloaded, any other
+ * provider that has an API key in .env takes over with its default model.
+ */
 export async function generateJson<T>(schema: z.ZodType<T>, prompt: Prompt): Promise<T> {
-  const { provider, model } = await resolveAi();
+  const primary = await resolveAi();
+  const backups = (["anthropic", "gemini", "openai"] as const)
+    .filter((p) => p !== primary.provider && process.env[ENV_KEY[p]])
+    .map((provider) => ({ provider, model: DEFAULT_MODEL[provider] }));
+  let lastError: unknown;
+  for (const [i, target] of [primary, ...backups].entries()) {
+    try {
+      return await withRetry(() => generateJsonWith(target, schema, prompt), i === 0 ? AI_ATTEMPTS : 2);
+    } catch (err) {
+      if (!isTransient(err)) throw err;
+      lastError = err;
+    }
+  }
+  console.error("[ai] all providers overloaded", lastError);
+  throw new Error(OVERLOADED);
+}
+
+async function generateJsonWith<T>(
+  { provider, model }: { provider: AiProviderKey; model: string },
+  schema: z.ZodType<T>,
+  prompt: Prompt,
+): Promise<T> {
   if (provider === "anthropic") return anthropicJson(model, prompt, schema);
 
   const text = provider === "gemini" ? await geminiJson(model, prompt) : await openAiJson(model, prompt);

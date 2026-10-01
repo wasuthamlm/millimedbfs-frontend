@@ -1,34 +1,44 @@
 "use client";
 
+import { useState } from "react";
 import { PlusIcon } from "@/components/ui/admin-icons";
-import type { PageSection } from "@/data/admin-pages";
+import { BLOCK_TYPES, newSection, type PageSection, type SectionType } from "@/lib/sections";
 
-export function AddBlockButton({ onAdd, className }: { onAdd: (section: PageSection) => void; className?: string }) {
-  const handleClick = () => {
-    onAdd({
-      id: crypto.randomUUID(),
-      order: 0,
-      type: "company-intro",
-      titleTh: "",
-      titleEn: "",
-      sourceLabel: "เขียนเนื้อหาเอง",
-      anchorId: "",
-      bodyTh: "",
-      visibility: { desktop: true, tablet: true, mobile: true },
-    });
-  };
+// Legacy-only types aren't offered for new blocks.
+const HIDDEN: SectionType[] = ["cta-bar", "company-intro"];
+
+export function AddBlockButton({ onAdd }: { onAdd: (section: PageSection) => void }) {
+  const [open, setOpen] = useState(false);
+  const types = (Object.keys(BLOCK_TYPES) as SectionType[]).filter((t) => !HIDDEN.includes(t));
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className={
-        className ??
-        "flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-navy/40 py-4 text-sm font-medium text-brand-navy hover:bg-brand-navy/5"
-      }
-    >
-      <PlusIcon className="h-4 w-4" />
-      เพิ่มบล็อกใหม่
-    </button>
+    <div className="flex flex-col gap-3">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-navy/40 py-4 text-sm font-medium text-brand-navy hover:bg-brand-navy/5"
+      >
+        <PlusIcon className="h-4 w-4" />
+        เพิ่มบล็อกใหม่
+      </button>
+      {open && (
+        <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-3">
+          {types.map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => {
+                onAdd(newSection(type));
+                setOpen(false);
+              }}
+              className="flex flex-col items-start gap-0.5 rounded-lg border border-slate-100 p-3 text-left hover:border-brand-navy hover:bg-brand-navy/5"
+            >
+              <span className="text-sm font-semibold text-slate-800">{BLOCK_TYPES[type].label}</span>
+              <span className="text-xs text-slate-400">{BLOCK_TYPES[type].description}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

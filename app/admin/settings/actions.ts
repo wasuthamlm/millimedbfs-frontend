@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, requirePermission } from "@/lib/require-admin";
+import { DEFAULT_LOCALE, isLocaleCode } from "@/lib/i18n/locales";
+import { invalidateEnabledLocales } from "@/lib/i18n/enabled-locales";
 import { logActivity } from "@/lib/activity-log";
 import { getOrCreateMedia } from "@/lib/media";
 import type { AiProvider } from "@/lib/generated/prisma/client";
@@ -241,14 +243,19 @@ export type GlobalThemeInput = {
   colorBackground: string;
   colorText: string;
   buttonRadius: string;
+  fontHeaderCustom: string;
+  fontBodyCustom: string;
 };
 
 export async function saveGlobalTheme(input: GlobalThemeInput) {
   const session = await requirePermission("settings.edit");
+  // Custom fonts are Google Fonts family names — keep them to safe characters since they end up in a URL and CSS.
+  const fontName = (v: string) => (/^[A-Za-z0-9 ]{0,60}$/.test(v.trim()) ? v.trim() || null : null);
+  const data = { ...input, fontHeaderCustom: fontName(input.fontHeaderCustom), fontBodyCustom: fontName(input.fontBodyCustom) };
   await prisma.globalTheme.upsert({
     where: { id: "singleton" },
-    update: input,
-    create: { id: "singleton", ...input },
+    update: data,
+    create: { id: "singleton", ...data },
   });
   await logActivity(session.user, "update", "Settings", { targetLabel: "ธีมเว็บไซต์" });
   revalidateSettings();
@@ -266,4 +273,39 @@ export async function saveAiSettings(input: { provider: AiProvider; model: strin
   await logActivity(session.user, "update", "Settings", { targetLabel: "AI" });
   revalidatePath("/admin/settings");
   revalidatePath("/admin/translations");
+}
+
+// ───────────────────────── Languages tab ─────────────────────────
+
+const languagesSchema = z
+  .array(
+    z.object({
+      code: z.string().refine(isLocaleCode, "รหัสภาษาไม่ถูกต้อง"),
+      labelLocal: z.string().trim().min(1, "กรุณาระบุชื่อภาษา").max(40),
+      enabled: z.boolean(),
+    }),
+  )
+  .min(1);
+
+/** Saves the enabled/ordered language list. Thai is the source language and can't be disabled. */
+export async function saveLanguages(input: { code: string; labelLocal: string; enabled: boolean }[]) {
+  const session = await requirePermission("settings.edit");
+  const parsed = languagesSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" };
+  await prisma.$transaction(
+    parsed.data.map((l, order) =>
+      prisma.language.upsert({
+        where: { code: l.code },
+        update: { labelLocal: l.labelLocal, enabled: l.code === DEFAULT_LOCALE ? true : l.enabled, order },
+        create: { code: l.code, labelLocal: l.labelLocal, enabled: l.code === DEFAULT_LOCALE ? true : l.enabled, order },
+      }),
+    ),
+  );
+  invalidateEnabledLocales();
+  await logActivity(session.user, "update", "Settings", {
+    targetLabel: "ภาษา",
+    details: `เปิดใช้: ${parsed.data.filter((l) => l.enabled || l.code === DEFAULT_LOCALE).map((l) => l.code).join(", ")}`,
+  });
+  revalidateSettings();
+  return {};
 }

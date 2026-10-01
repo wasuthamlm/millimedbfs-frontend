@@ -6,7 +6,9 @@ export type NavLink = {
   id?: string;
   label: string;
   href: string;
-  children?: { id?: string; label: string; href: string }[];
+  newTab?: boolean;
+  /** Up to two nested levels (menus are limited to 3 levels deep). */
+  children?: NavLink[];
 };
 
 export const navLinks: NavLink[] = [

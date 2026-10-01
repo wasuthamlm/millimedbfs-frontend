@@ -1,8 +1,9 @@
-// SEO scoring inspired by RankMath's on-page checklist. AEO (Answer Engine
-// Optimization) and GEO (Generative Engine Optimization) have no established
-// public algorithm — these are heuristic approximations built from our own
-// content fields (meta length, list/question patterns, content depth), not a
-// calibrated third-party score. Treat AEO/GEO numbers as directional, not exact.
+// SEO / AEO / GEO audit for CMS pages — the same checks and weights as the legacy
+// site's src/lib/seoAudit.js (auditPage). Articles and products use
+// lib/content-audit.ts (legacy ContentAuditPanel). Pure — safe on client and server.
+//
+// AEO/GEO have no public algorithm; these are content heuristics (answer-first
+// paragraph, lists, question headings, depth, facts), so treat them as directional.
 
 export type SeoCheck = { label: string; hint: string; passed: boolean; points: number; maxPoints: number };
 export type SeoCategoryResult = { score: number; checks: SeoCheck[] };
@@ -13,141 +14,6 @@ export type SeoAeoGeoResult = {
   geo: SeoCategoryResult;
 };
 
-export type SeoScoreInput = {
-  titleTh: string;
-  titleEn?: string | null;
-  seoTitle?: string | null;
-  seoTitleEn?: string | null;
-  seoDesc?: string | null;
-  seoDescEn?: string | null;
-  /** URL slug or other short identifier (e.g. SKU) used for the conciseness check. */
-  identifier: string;
-  identifierLabel: string;
-  /** Plain-text content used for length/structure heuristics (no HTML — checks are phrased accordingly). */
-  bodyText: string;
-  hasImage: boolean;
-  /** Count of structural units (page sections, paragraphs) used as a content-depth proxy. */
-  structureCount: number;
-};
-
-const BULLET_OR_STEPS_RE = /(^|\n)\s*([-•*]|\d+[.)])\s+\S/;
-const QUESTION_RE = /(ทำไม|อย่างไร|ยังไง|คืออะไร|เพราะอะไร|ขั้นตอน|วิธี|\?)/;
-const LINK_RE = /(https?:\/\/|www\.)\S+/i;
-
-/** Partial-credit tiering: too short or too long both cost points, matching RankMath's range checks. */
-function tier(value: number, min: number, max: number, weight: number): number {
-  if (value <= 0) return 0;
-  if (value < min) return Math.round(weight * 0.3);
-  if (value <= max) return weight;
-  if (value <= max * 1.4) return Math.round(weight * 0.6);
-  return Math.round(weight * 0.3);
-}
-
-function toCheck(label: string, hint: string, points: number, maxPoints: number): SeoCheck {
-  return { label, hint, points, maxPoints, passed: points >= maxPoints };
-}
-
-function category(checks: SeoCheck[]): SeoCategoryResult {
-  const score = Math.max(0, Math.min(100, checks.reduce((sum, c) => sum + c.points, 0)));
-  return { score, checks };
-}
-
-function scoreSeo(input: SeoScoreInput): SeoCategoryResult {
-  const titleLen = (input.seoTitle || input.titleTh).trim().length;
-  const descLen = (input.seoDesc ?? "").trim().length;
-  const bodyLen = input.bodyText.replace(/\s+/g, "").length;
-  const identifierLen = input.identifier.trim().length;
-
-  return category([
-    toCheck(
-      "Meta Title ยาวเหมาะสม (30–60 ตัวอักษร)",
-      `ตอนนี้ ${titleLen} ตัวอักษร`,
-      tier(titleLen, 30, 60, 25),
-      25,
-    ),
-    toCheck(
-      "Meta Description ยาวเหมาะสม (70–160 ตัวอักษร)",
-      `ตอนนี้ ${descLen} ตัวอักษร`,
-      descLen === 0 ? 0 : tier(descLen, 70, 160, 25),
-      25,
-    ),
-    toCheck(
-      "เนื้อหายาวพอ (600 ตัวอักษรขึ้นไป)",
-      `ตอนนี้ ${bodyLen} ตัวอักษร`,
-      bodyLen === 0 ? 0 : tier(bodyLen, 600, 4000, 20),
-      20,
-    ),
-    toCheck("มีรูปภาพประกอบ", "ช่วยเพิ่มอัตราคลิกจากผลการค้นหาและโซเชียล", input.hasImage ? 15 : 0, 15),
-    toCheck(
-      `${input.identifierLabel}กระชับ อ่านง่าย (≤75 ตัวอักษร)`,
-      `ตอนนี้ ${identifierLen} ตัวอักษร`,
-      identifierLen === 0 ? 0 : identifierLen <= 75 ? 15 : 5,
-      15,
-    ),
-  ]);
-}
-
-function scoreAeo(input: SeoScoreInput): SeoCategoryResult {
-  const answerLen = (input.seoDesc || input.bodyText).trim().length;
-  const hasList = BULLET_OR_STEPS_RE.test(input.bodyText);
-  const hasQuestionForm = QUESTION_RE.test(`${input.titleTh} ${input.bodyText}`);
-
-  return category([
-    toCheck(
-      "ย่อหน้า/คำอธิบายตอบคำถามตรงประเด็น (80–400 ตัวอักษร)",
-      `ตอนนี้ ${answerLen} ตัวอักษร`,
-      answerLen === 0 ? 0 : tier(answerLen, 80, 400, 30),
-      30,
-    ),
-    toCheck(
-      "มีรายการ (bullet) หรือขั้นตอนในเนื้อหา",
-      "ช่วยให้ AI ดึงคำตอบเป็นลิสต์ได้ง่ายขึ้น",
-      hasList ? 25 : 0,
-      25,
-    ),
-    toCheck(
-      "มีคำหรือหัวข้อในรูปแบบคำถาม",
-      'เช่น "ทำไมต้อง...", "วิธี...", "คืออะไร"',
-      hasQuestionForm ? 20 : 0,
-      20,
-    ),
-    toCheck(
-      "เนื้อหามีความครบถ้วน ไม่ปล่อยว่าง",
-      `พบ ${input.structureCount} ส่วน/ย่อหน้า`,
-      input.structureCount >= 2 ? 25 : input.structureCount === 1 ? 10 : 0,
-      25,
-    ),
-  ]);
-}
-
-function scoreGeo(input: SeoScoreInput): SeoCategoryResult {
-  const descLen = (input.seoDesc ?? "").trim().length;
-  const bodyLen = input.bodyText.replace(/\s+/g, "").length;
-  const hasEnglish = Boolean(input.titleEn?.trim() || input.seoTitleEn?.trim() || input.seoDescEn?.trim());
-  const hasLink = LINK_RE.test(input.bodyText);
-
-  return category([
-    toCheck("มีคำอธิบายหน้า (Meta Description) ชัดเจน", "ช่วยให้ AI เข้าใจบริบทของหน้านี้", descLen > 0 ? 25 : 0, 25),
-    toCheck("มีชื่อเรื่อง/คำอธิบายภาษาอังกฤษ", "เพิ่มโอกาสถูกอ้างอิงจากแหล่งข้อมูลนานาชาติ", hasEnglish ? 25 : 0, 25),
-    toCheck(
-      "เนื้อหาเชิงลึกพอให้ AI อ้างอิง (1,200 ตัวอักษรขึ้นไป)",
-      `ตอนนี้ ${bodyLen} ตัวอักษร`,
-      bodyLen === 0 ? 0 : tier(bodyLen, 1200, 6000, 30),
-      30,
-    ),
-    toCheck("มีลิงก์ (URL) อ้างอิงแหล่งข้อมูลในเนื้อหา", "ตรวจจากข้อความ http(s):// หรือ www. ในเนื้อหา", hasLink ? 20 : 0, 20),
-  ]);
-}
-
-export function calculateSeoAeoGeo(input: SeoScoreInput): SeoAeoGeoResult {
-  const seo = scoreSeo(input);
-  const aeo = scoreAeo(input);
-  const geo = scoreGeo(input);
-  return { overall: Math.round((seo.score + aeo.score + geo.score) / 3), seo, aeo, geo };
-}
-
-// ───────────────────────── Content-type adapters ─────────────────────────
-
 export type PageSeoAdapterInput = {
   titleTh: string;
   titleEn?: string | null;
@@ -156,83 +22,62 @@ export type PageSeoAdapterInput = {
   seoDesc?: string | null;
   seoDescEn?: string | null;
   slug: string;
+  /** Block heading, rich-text body (HTML) and image of each page block. */
   sections: { titleTh: string; imageUrl?: string | null; bodyTh?: string | null }[];
 };
 
-export function pageToScoreInput(page: PageSeoAdapterInput): SeoScoreInput {
-  const bodyText = page.sections
-    .map((s) => [s.titleTh, s.bodyTh].filter(Boolean).join(" "))
-    .join("\n\n");
-  return {
-    titleTh: page.titleTh,
-    titleEn: page.titleEn,
-    seoTitle: page.seoTitle,
-    seoTitleEn: page.seoTitleEn,
-    seoDesc: page.seoDesc,
-    seoDescEn: page.seoDescEn,
-    identifier: page.slug,
-    identifierLabel: "Slug ",
-    bodyText,
-    hasImage: page.sections.some((s) => Boolean(s.imageUrl)),
-    structureCount: page.sections.length,
-  };
+const strip = (html: string | null | undefined) => (html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
+function check(ok: boolean, weight: number, label: string, hint: string): SeoCheck {
+  return { label, hint, passed: ok, points: ok ? weight : 0, maxPoints: weight };
 }
 
-export type PostSeoAdapterInput = {
-  titleTh: string;
-  titleEn?: string | null;
-  seoTitle?: string | null;
-  seoTitleEn?: string | null;
-  seoDesc?: string | null;
-  seoDescEn?: string | null;
-  excerptTh?: string | null;
-  bodyTh?: string | null;
-  slug: string;
-  hasCoverImage: boolean;
-};
-
-export function postToScoreInput(post: PostSeoAdapterInput): SeoScoreInput {
-  const bodyText = post.bodyTh || post.excerptTh || "";
-  return {
-    titleTh: post.titleTh,
-    titleEn: post.titleEn,
-    seoTitle: post.seoTitle,
-    seoTitleEn: post.seoTitleEn,
-    seoDesc: post.seoDesc || post.excerptTh,
-    seoDescEn: post.seoDescEn,
-    identifier: post.slug,
-    identifierLabel: "Slug ",
-    bodyText,
-    hasImage: post.hasCoverImage,
-    structureCount: bodyText.split(/\n{2,}/).filter((p) => p.trim().length > 0).length,
-  };
+function category(checks: SeoCheck[]): SeoCategoryResult {
+  return { score: Math.min(100, checks.reduce((n, c) => n + c.points, 0)), checks };
 }
 
-export type ProductSeoAdapterInput = {
-  nameTh: string;
-  nameEn?: string | null;
-  seoTitle?: string | null;
-  seoTitleEn?: string | null;
-  seoDesc?: string | null;
-  seoDescEn?: string | null;
-  descriptionTh?: string | null;
-  sku: string;
-  hasImage: boolean;
-};
+/** Kept for call-site compatibility: the page fields are the audit input as-is. */
+export function pageToScoreInput(page: PageSeoAdapterInput): PageSeoAdapterInput {
+  return page;
+}
 
-export function productToScoreInput(product: ProductSeoAdapterInput): SeoScoreInput {
-  const bodyText = product.descriptionTh || "";
-  return {
-    titleTh: product.nameTh,
-    titleEn: product.nameEn,
-    seoTitle: product.seoTitle,
-    seoTitleEn: product.seoTitleEn,
-    seoDesc: product.seoDesc || product.descriptionTh,
-    seoDescEn: product.seoDescEn,
-    identifier: product.sku,
-    identifierLabel: "SKU ",
-    bodyText,
-    hasImage: product.hasImage,
-    structureCount: bodyText.split(/\n{2,}/).filter((p) => p.trim().length > 0).length,
-  };
+export function calculateSeoAeoGeo(page: PageSeoAdapterInput): SeoAeoGeoResult {
+  const sections = page.sections;
+  const html = sections.map((s) => s.bodyTh || "").join("");
+  const text = strip(html);
+  const headings = `${sections.map((s) => s.titleTh || "").join(" ")} ${(html.match(/<h[23][^>]*>(.*?)<\/h[23]>/gi) || []).map(strip).join(" ")}`;
+  const title = (page.seoTitle || page.titleTh || "").trim();
+  const desc = (page.seoDesc || "").trim();
+
+  const seo = category([
+    check(title.length >= 30 && title.length <= 60, 25, "Meta Title ยาว 30–60 ตัวอักษร", `ตอนนี้ ${title.length} ตัวอักษร`),
+    check(desc.length >= 70 && desc.length <= 160, 20, "Meta Description ยาว 70–160 ตัวอักษร", `ตอนนี้ ${desc.length} ตัวอักษร`),
+    check(/<h[23][\s>]/i.test(html), 15, "มีหัวข้อย่อย H2/H3 ในเนื้อหา", "ช่วยให้ Google เข้าใจโครงสร้างหน้า"),
+    check(text.length >= 600, 25, "เนื้อหายาวพอ (600 ตัวอักษรขึ้นไป)", `ตอนนี้ ${text.length} ตัวอักษร`),
+    check(/<a\s[^>]*href=/i.test(html), 15, "มีลิงก์เชื่อมไปหน้าอื่น", "เพิ่มลิงก์ภายในอย่างน้อย 1 จุด"),
+  ]);
+
+  const firstParaLen = strip((html.match(/<p[^>]*>(.*?)<\/p>/i) || [])[1]).length;
+  const filled = sections.filter((s) => strip(s.bodyTh).length > 50).length;
+  const aeo = category([
+    check(firstParaLen >= 80 && firstParaLen <= 400, 30, "ย่อหน้าแรกตอบคำถามตรงประเด็น (80–400 ตัวอักษร)", "AI Overview มักดึงย่อหน้าแรกไปแสดง"),
+    check(/<(ul|ol|table)[\s>]/i.test(html), 25, "มีรายการ (bullet) หรือ ตาราง", "เนื้อหาแบบลิสต์ถูกดึงไปตอบง่ายกว่า"),
+    check(
+      /(\?|ทำไม|อะไร|อย่างไร|ยังไง|ที่ไหน|เมื่อไหร่|กี่|ใคร|why|what|how|where|when|who)/i.test(headings),
+      20,
+      "มีหัวข้อในรูปแบบคำถาม",
+      'เช่น "ทำไมต้อง..." "สมัครอย่างไร"',
+    ),
+    check(sections.length > 0 && filled / sections.length >= 0.6, 25, "บล็อกส่วนใหญ่มีเนื้อหาครบ", `มีเนื้อหา ${filled}/${sections.length} บล็อก — อย่าปล่อยบล็อกว่าง`),
+  ]);
+
+  const geo = category([
+    check(!!desc, 20, "มีคำอธิบายหน้า (Meta Description)", "AI ใช้สรุปว่าหน้านี้เกี่ยวกับอะไร"),
+    check(!!(page.seoTitleEn?.trim() || page.titleEn?.trim()), 15, "มีชื่อหน้าภาษาอังกฤษ", "ช่วยให้ AI ต่างประเทศเข้าใจแบรนด์"),
+    check(text.length >= 1200, 25, "เนื้อหาเชิงลึกพอให้ AI อ้างอิง (1,200+ ตัวอักษร)", `ตอนนี้ ${text.length} ตัวอักษร`),
+    check(/\d/.test(text), 20, "มีตัวเลข/ข้อมูลเชิงข้อเท็จจริง", "เช่น ปีก่อตั้ง จำนวน สถิติ"),
+    check(sections.some((s) => !!s.imageUrl) || /<img\s/i.test(html), 20, "มีรูปภาพประกอบ", "เพิ่มความน่าเชื่อถือและ rich result"),
+  ]);
+
+  return { overall: Math.round((seo.score + aeo.score + geo.score) / 3), seo, aeo, geo };
 }

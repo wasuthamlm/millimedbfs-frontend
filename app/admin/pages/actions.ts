@@ -72,18 +72,52 @@ export type PageSeoInput = {
   seoTitleEn: string;
   seoDescEn: string;
   seoNoIndex: boolean;
+  ogTitle: string;
+  ogTitleEn: string;
+  ogDesc: string;
+  ogDescEn: string;
+  ogImageUrl: string;
+  canonicalUrl: string;
+  /** Raw JSON-LD object (as text); "" clears it */
+  schemaCustom: string;
+  marketingEligible: boolean;
+  /** "" = site default, "none" = hide the page header band, or a hero mode */
+  heroStyle: string;
+  heroAlignment: string;
 };
 
 export async function setPageSeo(id: string, input: PageSeoInput): Promise<{ error?: string }> {
   const session = await requirePermission("page.edit");
+  let schemaCustom: Prisma.InputJsonValue | typeof Prisma.DbNull = Prisma.DbNull;
+  if (input.schemaCustom.trim()) {
+    try {
+      const parsed = JSON.parse(input.schemaCustom);
+      if (!parsed || typeof parsed !== "object") throw new Error();
+      schemaCustom = parsed;
+    } catch {
+      return { error: "Custom JSON-LD ไม่ใช่ JSON ที่ถูกต้อง" };
+    }
+  }
+  if (input.canonicalUrl && !/^https:\/\//.test(input.canonicalUrl)) return { error: "Canonical URL ต้องขึ้นต้นด้วย https://" };
+  const nullable = (v: string) => v.trim() || null;
   await prisma.page.update({
     where: { id },
     data: {
-      seoTitle: input.seoTitle || null,
-      seoDesc: input.seoDesc || null,
-      seoTitleEn: input.seoTitleEn || null,
-      seoDescEn: input.seoDescEn || null,
+      seoTitle: nullable(input.seoTitle),
+      seoDesc: nullable(input.seoDesc),
+      seoTitleEn: nullable(input.seoTitleEn),
+      seoDescEn: nullable(input.seoDescEn),
       seoNoIndex: input.seoNoIndex,
+      ogTitle: nullable(input.ogTitle),
+      ogTitleEn: nullable(input.ogTitleEn),
+      ogDesc: nullable(input.ogDesc),
+      ogDescEn: nullable(input.ogDescEn),
+      ogImageUrl: nullable(input.ogImageUrl),
+      canonicalUrl: nullable(input.canonicalUrl),
+      schemaCustom,
+      marketingEligible: input.marketingEligible,
+      heroStyle: nullable(input.heroStyle),
+      heroAlignment: nullable(input.heroAlignment),
     },
   });
   await logActivity(session.user, "update", "Page", { targetId: id, changedFields: ["seo"] });
@@ -123,4 +157,59 @@ export async function deletePage(id: string): Promise<{ error?: string }> {
   revalidatePath("/admin/pages");
   revalidateSite();
   return {};
+}
+
+export async function setPagesStatus(ids: string[], status: "DRAFT" | "PUBLISHED"): Promise<{ error?: string }> {
+  const session = await requirePermission("page.publish");
+  if (ids.length === 0) return {};
+  await prisma.page.updateMany({ where: { id: { in: ids } }, data: { status } });
+  await logActivity(session.user, status === "PUBLISHED" ? "publish" : "unpublish", "Page", { details: `${ids.length} หน้า` });
+  revalidatePath("/admin/pages");
+  revalidateSite();
+  return {};
+}
+
+/** Permanently deletes every page in the trash. */
+export async function emptyPageTrash(): Promise<{ error?: string }> {
+  const session = await requirePermission("page.delete");
+  const { count } = await prisma.page.deleteMany({ where: { archived: true } });
+  await logActivity(session.user, "delete", "Page", { details: `ล้างถังขยะ ${count} หน้า` });
+  revalidatePath("/admin/pages");
+  return {};
+}
+
+/** Copies a page and all its blocks as a new draft (legacy duplicatePage.js). */
+export async function duplicatePage(id: string): Promise<{ error?: string; slug?: string }> {
+  const session = await requirePermission("page.create");
+  const source = await prisma.page.findUnique({ where: { id }, include: { sections: { orderBy: { order: "asc" } } } });
+  if (!source) return { error: "ไม่พบหน้านี้" };
+
+  let slug = `${source.slug}-copy`;
+  for (let n = 2; await prisma.page.count({ where: { slug } }); n++) slug = `${source.slug}-copy-${n}`;
+
+  const { id: _id, createdAt: _c, updatedAt: _u, sections, ...rest } = source;
+  void _id;
+  void _c;
+  void _u;
+  const copy = await prisma.page.create({
+    data: {
+      ...rest,
+      slug,
+      titleTh: `${source.titleTh} (สำเนา)`,
+      status: "DRAFT",
+      archived: false,
+      schemaCustom: source.schemaCustom ?? Prisma.DbNull,
+      sections: {
+        create: sections.map(({ id: _sid, pageId: _pid, landingPageId: _lid, config, ...s }) => {
+          void _sid;
+          void _pid;
+          void _lid;
+          return { ...s, config: config ?? Prisma.DbNull };
+        }),
+      },
+    },
+  });
+  await logActivity(session.user, "create", "Page", { targetId: copy.id, targetLabel: copy.titleTh, details: `สำเนาจาก ${source.slug}` });
+  revalidatePath("/admin/pages");
+  return { slug: copy.slug };
 }

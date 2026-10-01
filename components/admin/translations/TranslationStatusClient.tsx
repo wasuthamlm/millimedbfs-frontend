@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { LanguagesIcon, CheckIcon } from "@/components/ui/admin-icons";
-import { getPendingItemIds, translateItem } from "@/app/admin/translations/actions";
+import { clearTranslations, finishTranslationRun, getPendingItemIds, translateItem } from "@/app/admin/translations/actions";
 
 const CONCURRENCY = 3;
 
@@ -15,7 +15,7 @@ type LocaleStatus = {
 };
 
 type Section = {
-  type: "ARTICLE" | "PRODUCT";
+  type: string;
   label: string;
   total: number;
   locales: LocaleStatus[];
@@ -68,9 +68,17 @@ export function TranslationStatusClient({ sections: initialSections }: { section
 
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker));
     } finally {
+      await finishTranslationRun();
       setRunning(null);
       setProgress(null);
     }
+  };
+
+  const handleClear = async (type: string, locale: string, label: string) => {
+    if (!window.confirm(`ลบคำแปล "${label}" ภาษา ${locale} ทั้งหมด? จะต้องแปลใหม่`)) return;
+    const res = await clearTranslations(type, locale);
+    if (res.error) setError(res.error);
+    else setCounts((prev) => ({ ...prev, [`${type}:${locale}`]: 0 }));
   };
 
   return (
@@ -79,6 +87,10 @@ export function TranslationStatusClient({ sections: initialSections }: { section
         <LanguagesIcon className="h-6 w-6 text-brand-navy" />
         <h1 className="text-2xl font-bold text-slate-900">Translation Status</h1>
       </div>
+      <p className="-mt-3 text-sm text-slate-500">
+        ภาษาไทยเป็นต้นฉบับ — กด “แปลทั้งหมด” เพื่อให้ AI แปลรายการที่ยังไม่มีคำแปล หน้าเว็บภาษานั้นจะแสดงคำแปลแทนภาษาไทยทันที
+        (ภาษาอังกฤษใช้ช่อง EN ที่กรอกในฟอร์มก่อน แล้วจึงใช้คำแปลจากหน้านี้) · แสดงเฉพาะภาษาที่เปิดใช้ใน ตั้งค่า → ภาษา
+      </p>
 
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
@@ -147,6 +159,17 @@ export function TranslationStatusClient({ sections: initialSections }: { section
                         <CheckIcon className="h-3.5 w-3.5" />
                         ครบแล้ว
                       </span>
+                    )}
+                    {translatedCount > 0 && (
+                      <button
+                        type="button"
+                        disabled={running !== null}
+                        onClick={() => void handleClear(section.type, locale.code, section.label)}
+                        title="ลบคำแปลของภาษานี้เพื่อแปลใหม่"
+                        className="shrink-0 text-xs text-slate-400 hover:text-red-600 disabled:opacity-50"
+                      >
+                        ล้าง
+                      </button>
                     )}
                   </div>
                 );

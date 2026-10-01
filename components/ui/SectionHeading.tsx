@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { ArrowRight } from "./icons";
+import { ui } from "@/lib/i18n/ui";
 
 export function SectionHeading({
   title,
   viewAllHref,
   centered = false,
+  locale = "th",
 }: {
   title: string;
   viewAllHref?: string;
   centered?: boolean;
+  locale?: string;
 }) {
   return (
     <div
@@ -27,7 +30,7 @@ export function SectionHeading({
           href={viewAllHref}
           className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-brand-navy transition-colors hover:text-brand-gold-dark"
         >
-          อ่านทั้งหมด
+          {ui(locale, "readAll")}
           <ArrowRight className="h-4 w-4" />
         </Link>
       )}

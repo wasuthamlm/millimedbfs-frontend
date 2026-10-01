@@ -9,7 +9,7 @@ export default function SiteNotFound() {
       <p className="text-sm text-slate-500">หน้านี้อาจถูกย้ายหรือไม่มีอยู่จริง</p>
       <Link
         href="/"
-        className="inline-flex items-center justify-center rounded-full bg-brand-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-navy-dark"
+        className="inline-flex items-center justify-center rounded-full bg-brand-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-navy-hover"
       >
         กลับหน้าแรก
       </Link>

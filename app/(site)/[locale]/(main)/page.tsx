@@ -1,17 +1,29 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { POST_CARD_INCLUDE, toArticleView, toNewsView } from "@/lib/post-view";
-import { PageSectionsRenderer } from "@/components/site/PageSectionsRenderer";
+import { SectionsWithData } from "@/components/site/SectionsWithData";
+import { MarketingEligibility } from "@/components/analytics/PageTracking";
+import { loadLocalizer } from "@/lib/i18n/localize";
+import { localeAlternates } from "@/lib/i18n/alternates";
+import { localeInfo, localePath } from "@/lib/i18n/locales";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 import type { SectionType } from "@/lib/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const page = await prisma.page.findUnique({ where: { slug: "home" } });
+async function loadHome() {
+  return prisma.page.findUnique({ where: { slug: "home" }, include: { sections: { orderBy: { order: "asc" } } } });
+}
+
+export async function generateMetadata({ params }: PageProps<"/[locale]">): Promise<Metadata> {
+  const { locale } = await params;
+  const page = await loadHome();
+  const t = page ? await loadLocalizer(locale, [["PAGE", [page.id]]]) : null;
+  const title = page && t ? t("PAGE", page.id, "seoTitle", page.seoTitle, page.seoTitleEn) || t("PAGE", page.id, "title", page.titleTh, page.titleEn) : "";
+  const description = page && t ? t("PAGE", page.id, "seoDesc", page.seoDesc, page.seoDescEn) : "";
   return {
-    title: page?.seoTitle || page?.titleTh || undefined,
-    description: page?.seoDesc || undefined,
-    alternates: { canonical: "/" },
+    title: title || undefined,
+    description: description || undefined,
+    alternates: await localeAlternates(locale, "/", page?.canonicalUrl),
     ...(page?.seoNoIndex ? { robots: { index: false, follow: false } } : {}),
   };
 }
@@ -19,7 +31,6 @@ export async function generateMetadata(): Promise<Metadata> {
 const DEFAULT_SECTIONS = [
   { id: "default-hero", type: "HERO_BANNERS" as SectionType },
   { id: "default-news", type: "LATEST_NEWS" as SectionType },
-  { id: "default-articles", type: "ARTICLES" as SectionType },
 ].map((s, i) => ({
   ...s,
   order: i,
@@ -33,70 +44,58 @@ const DEFAULT_SECTIONS = [
   config: null,
 }));
 
-export default async function Home() {
-  const page = await prisma.page.findUnique({
-    where: { slug: "home" },
-    include: { sections: { orderBy: { order: "asc" } } },
-  });
+export default async function Home({ params }: PageProps<"/[locale]">) {
+  const { locale } = await params;
+  const [page, settings, contact] = await Promise.all([
+    loadHome(),
+    prisma.siteSettings.findUnique({ where: { id: "singleton" }, include: { siteLogo: true } }),
+    prisma.footerContact.findUnique({ where: { id: "singleton" } }),
+  ]);
 
   // Fallback to hardcoded defaults if the "home" page hasn't been configured
   // in the DB yet (e.g. fresh install before seeding), so the homepage never
   // renders blank.
   const sections = page && page.sections.length > 0 ? page.sections : DEFAULT_SECTIONS;
 
-  const latestNewsSection = sections.find((s) => s.type === "LATEST_NEWS");
-  const articlesSection = sections.find((s) => s.type === "ARTICLES");
-  const newsTake = latestNewsSection?.itemsToShow ?? 3;
-  const articlesTake = articlesSection?.itemsToShow ?? 8;
-
-  const [newsPosts, articlePosts, bannerRows, bannerConfig] = await Promise.all([
-    prisma.post.findMany({
-      where: { kind: "NEWS", status: "PUBLISHED" },
-      orderBy: { publishedAt: "desc" },
-      include: POST_CARD_INCLUDE,
-      take: newsTake,
-    }),
-    prisma.post.findMany({
-      where: { kind: "ARTICLE", status: "PUBLISHED" },
-      orderBy: { publishedAt: "desc" },
-      include: POST_CARD_INCLUDE,
-      take: articlesTake,
-    }),
-    prisma.banner.findMany({
-      where: { active: true },
-      orderBy: { order: "asc" },
-      include: { image: true },
-    }),
-    prisma.siteBannerConfig.findUnique({ where: { id: "singleton" } }),
-  ]);
-
-  const newsItems = newsPosts.map(toNewsView);
-  const articleItems = articlePosts.map(toArticleView);
-  const bannerItems = bannerRows
-    .filter((b) => b.image)
-    .map((b) => ({ id: b.id, titleTh: b.titleTh, altText: b.altTextTh, image: b.image!.url, link: b.link }));
+  const en = locale === "en";
+  const siteName = (en && settings?.siteNameEn) || settings?.siteNameTh || SITE_NAME;
+  const home = `${SITE_URL}${localePath(locale, "/")}`;
+  // WebSite (+ sitelinks search box) and LocalBusiness — home page only (legacy SeoHead).
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: siteName,
+      url: home,
+      inLanguage: localeInfo(locale).hreflang,
+      potentialAction: {
+        "@type": "SearchAction",
+        target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}${localePath(locale, "/search")}?q={search_term_string}` },
+        "query-input": "required name=search_term_string",
+      },
+    },
+    ...(contact
+      ? [
+          {
+            "@context": "https://schema.org",
+            "@type": "LocalBusiness",
+            name: (en && contact.companyNameEn) || contact.companyNameTh || siteName,
+            url: home,
+            ...(settings?.siteLogo?.url ? { image: settings.siteLogo.url, logo: settings.siteLogo.url } : {}),
+            ...(contact.phone ? { telephone: contact.phone } : {}),
+            ...(contact.email ? { email: contact.email } : {}),
+            ...(((en && contact.addressEn) || contact.address) ? { address: (en && contact.addressEn) || contact.address } : {}),
+            ...(contact.taxId ? { taxID: contact.taxId } : {}),
+          },
+        ]
+      : []),
+  ];
 
   return (
-    <PageSectionsRenderer
-      sections={sections}
-      newsItems={newsItems}
-      articleItems={articleItems}
-      bannerItems={bannerItems}
-      bannerConfig={
-        bannerConfig
-          ? {
-              transitionEffect: bannerConfig.transitionEffect,
-              direction: bannerConfig.direction,
-              transitionSpeedMs: bannerConfig.transitionSpeedMs,
-              displayDurationMs: bannerConfig.displayDurationMs,
-              autoplay: bannerConfig.autoplay,
-              loop: bannerConfig.loop,
-              pauseOnHover: bannerConfig.pauseOnHover,
-              showArrows: bannerConfig.showArrows,
-              showDots: bannerConfig.showDots,
-            }
-          : undefined
-      }
-    />
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <MarketingEligibility eligible={page?.marketingEligible === true} />
+      <SectionsWithData sections={sections} locale={locale} />
+    </>
   );
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { revalidateSite } from "@/lib/revalidate-site";
 import { Prisma, type PostStatus } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { requirePermission } from "@/lib/require-admin";
 import { canDo } from "@/lib/admin-roles";
 import { getOrCreateMedia } from "@/lib/media";
@@ -93,8 +94,9 @@ function toData(data: PostFormInput) {
     titleEn: nullable(data.titleEn),
     excerptTh: nullable(data.excerptTh),
     excerptEn: nullable(data.excerptEn),
-    bodyTh: nullable(data.bodyTh),
-    bodyEn: nullable(data.bodyEn),
+    // Rich text is sanitized on save as well as on render.
+    bodyTh: nullable(data.bodyTh ? sanitizeHtml(data.bodyTh) : data.bodyTh),
+    bodyEn: nullable(data.bodyEn ? sanitizeHtml(data.bodyEn) : data.bodyEn),
     featured: data.featured ?? false,
     seoTitle: nullable(data.seoTitle),
     seoDesc: nullable(data.seoDesc),

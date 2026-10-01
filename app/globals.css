@@ -15,6 +15,10 @@
   --color-brand-navy-dark: var(--brand-navy-dark, #0d1a4a);
   --color-brand-gold: var(--brand-gold, #f5b301);
   --color-brand-gold-dark: var(--brand-gold-dark, #d99a00);
+  /* Primary hover, tinted surface and body text from GlobalTheme; defaults match the look before theming */
+  --color-brand-navy-hover: var(--brand-navy-hover, var(--brand-navy-dark, #0d1a4a));
+  --color-site-bg: var(--site-bg, #f8fafc);
+  --color-site-text: var(--site-text, var(--foreground));
 
   --font-sans: var(--font-body, var(--font-thai)), var(--font-thai-fallback), sans-serif;
   --font-heading: var(--font-heading-family, var(--font-thai)), var(--font-thai-fallback), sans-serif;

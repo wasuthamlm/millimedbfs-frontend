@@ -7,6 +7,7 @@ import { ArticleCard } from "@/components/articles/ArticleCard";
 import { staggerContainer } from "@/lib/motion";
 import type { ArticleView } from "@/lib/post-view";
 import { cn } from "@/lib/utils";
+import { ui } from "@/lib/i18n/ui";
 
 const COLUMN_CLASSES: Record<number, string> = {
   1: "grid-cols-1",
@@ -16,18 +17,20 @@ const COLUMN_CLASSES: Record<number, string> = {
 };
 
 export function ArticlesGrid({
-  title = "บทความน่ารู้",
+  title,
   items,
   columns = 4,
+  locale = "th",
 }: {
   title?: string;
   items: ArticleView[];
   columns?: number;
+  locale?: string;
 }) {
   return (
-    <section className="bg-slate-50 py-14 sm:py-20">
+    <section className="bg-site-bg py-14 sm:py-20">
       <Container className="flex flex-col gap-10">
-        <SectionHeading title={title} centered />
+        <SectionHeading title={title || ui(locale, "articles")} centered locale={locale} />
         <motion.div
           variants={staggerContainer}
           initial="hidden"

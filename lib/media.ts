@@ -1,8 +1,10 @@
-import type { Prisma } from "@/lib/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
+import type { prisma } from "@/lib/prisma";
+
+/** The shared client or the `tx` handed to prisma.$transaction(async (tx) => ...). */
+type Db = Pick<typeof prisma, "media">;
 
 export async function getOrCreateMedia(
-  client: Prisma.TransactionClient | typeof prisma,
+  client: Db,
   url: string,
 ) {
   const existing = await client.media.findFirst({ where: { url } });

@@ -1,31 +1,50 @@
 import type { Metadata } from "next";
-import { Container } from "@/components/ui/Container";
-import { PlaceholderPage } from "@/components/ui/PlaceholderPage";
-import { PRODUCT_CARD_SELECT, ProductGrid } from "@/components/products/ProductGrid";
+import { ProductListing } from "@/components/products/ProductListing";
+import { SectionsWithData } from "@/components/site/SectionsWithData";
+import { MarketingEligibility } from "@/components/analytics/PageTracking";
 import { prisma } from "@/lib/prisma";
+import { localeAlternates } from "@/lib/i18n/alternates";
+import { loadLocalizer } from "@/lib/i18n/localize";
+import { ui } from "@/lib/i18n/ui";
+import { parseListingParams } from "@/lib/product-listing";
 
-export const metadata: Metadata = {
-  title: "สินค้า",
-  description: "ผลิตภัณฑ์ของ Millimed BFS",
-  alternates: { canonical: "/products" },
-};
+export const dynamic = "force-dynamic";
 
-export default async function ProductsPage({ params }: PageProps<"/[locale]/products">) {
-  const { locale } = await params;
-  const products = await prisma.product.findMany({
-    where: { status: "ACTIVE", deletedAt: null },
-    orderBy: [{ order: "asc" }, { updatedAt: "desc" }],
-    select: PRODUCT_CARD_SELECT,
+// Blocks added to the "products" page in the page builder render below the listing (legacy CustomSections).
+function productsCmsPage() {
+  return prisma.page.findFirst({
+    where: { slug: "products", status: "PUBLISHED", archived: false, deletedAt: null },
+    include: { sections: { orderBy: { order: "asc" } } },
   });
+}
 
-  if (products.length === 0) {
-    return <PlaceholderPage title="สินค้า" />;
-  }
+export async function generateMetadata({ params, searchParams }: PageProps<"/[locale]/products">): Promise<Metadata> {
+  const [{ locale }, sp] = await Promise.all([params, searchParams]);
+  const listing = parseListingParams(sp);
+  return {
+    title: ui(locale, "products"),
+    description: ui(locale, "productsDesc"),
+    alternates: await localeAlternates(locale, "/products"),
+    // Search / filter variants are the same content — keep only the clean listing indexed.
+    ...(listing.q || listing.price !== "all" || listing.sort !== "default" ? { robots: { index: false, follow: true } } : {}),
+  };
+}
+
+export default async function ProductsPage({ params, searchParams }: PageProps<"/[locale]/products">) {
+  const [{ locale }, sp] = await Promise.all([params, searchParams]);
+  const cmsPage = await productsCmsPage();
+  const t = cmsPage ? await loadLocalizer(locale, [["PAGE", [cmsPage.id]]]) : null;
 
   return (
-    <Container className="flex flex-col gap-8 py-14 sm:py-20">
-      <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">สินค้า</h1>
-      <ProductGrid products={products} locale={locale} />
-    </Container>
+    <>
+      <MarketingEligibility eligible={cmsPage?.marketingEligible === true} />
+      <ProductListing
+        locale={locale}
+        params={parseListingParams(sp)}
+        title={cmsPage && t ? t("PAGE", cmsPage.id, "title", cmsPage.titleTh, cmsPage.titleEn) : ui(locale, "products")}
+        heroPage={cmsPage}
+      />
+      {cmsPage && cmsPage.sections.length > 0 && <SectionsWithData sections={cmsPage.sections} locale={locale} />}
+    </>
   );
 }

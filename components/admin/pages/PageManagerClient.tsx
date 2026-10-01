@@ -6,8 +6,16 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { StatusSelectPill } from "@/components/admin/StatusSelectPill";
 import { SeoScoreBadge } from "@/components/admin/articles/SeoScoreBadge";
-import { GlobeIcon, PlusIcon, ArchiveIcon, PencilIcon, TrashIcon, SearchIcon } from "@/components/ui/admin-icons";
-import { setPageStatus, archivePages, restorePages, deletePage } from "@/app/admin/pages/actions";
+import { GlobeIcon, PlusIcon, ArchiveIcon, PencilIcon, TrashIcon, SearchIcon, CopyIcon } from "@/components/ui/admin-icons";
+import {
+  setPageStatus,
+  setPagesStatus,
+  archivePages,
+  restorePages,
+  deletePage,
+  duplicatePage,
+  emptyPageTrash,
+} from "@/app/admin/pages/actions";
 
 type PageRow = {
   id: string;
@@ -24,11 +32,15 @@ export function PageManagerClient({
   activeCount,
   archivedCount,
   showTrash,
+  canPublish,
+  canDelete,
 }: {
   pages: PageRow[];
   activeCount: number;
   archivedCount: number;
   showTrash: boolean;
+  canPublish: boolean;
+  canDelete: boolean;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -73,6 +85,27 @@ export function PageManagerClient({
     router.refresh();
   };
 
+  const handleBulkStatus = async (ids: string[], status: "DRAFT" | "PUBLISHED") => {
+    await setPagesStatus(ids, status);
+    setSelected(new Set());
+    router.refresh();
+  };
+
+  const handleDuplicate = async (id: string) => {
+    const res = await duplicatePage(id);
+    if (res.error) {
+      window.alert(res.error);
+      return;
+    }
+    router.push(`/admin/pages/${res.slug}`);
+  };
+
+  const handleEmptyTrash = async () => {
+    if (!window.confirm(`ลบถาวรทุกหน้าในถังขยะ (${archivedCount} หน้า)? ไม่สามารถกู้คืนได้`)) return;
+    await emptyPageTrash();
+    router.refresh();
+  };
+
   const handlePermanentDelete = async (id: string, titleTh: string) => {
     if (!window.confirm(`ลบหน้า "${titleTh}" อย่างถาวร ไม่สามารถกู้คืนได้ ใช่หรือไม่?`)) return;
     await deletePage(id);
@@ -88,12 +121,23 @@ export function PageManagerClient({
         />
         <div className="flex items-center gap-2">
           {showTrash ? (
+            <>
+            {canDelete && archivedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => void handleEmptyTrash()}
+                className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              >
+                ล้างถังขยะ
+              </button>
+            )}
             <Link
               href="/admin/pages"
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
             >
               กลับไป Page Manager
             </Link>
+            </>
           ) : (
             <>
               <Link
@@ -130,6 +174,7 @@ export function PageManagerClient({
         <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
           <span className="text-sm text-slate-500">เลือกแล้ว {selected.size} รายการ</span>
           {showTrash ? (
+            canDelete && (
             <button
               type="button"
               onClick={() => void handleRestore(Array.from(selected))}
@@ -137,15 +182,30 @@ export function PageManagerClient({
             >
               กู้คืน
             </button>
+            )
           ) : (
-            <button
-              type="button"
-              onClick={() => void handleArchive(Array.from(selected))}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-            >
-              <ArchiveIcon className="h-4 w-4" />
-              ย้ายไปถังขยะ
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {canPublish && (
+                <>
+                  <button type="button" onClick={() => void handleBulkStatus(Array.from(selected), "PUBLISHED")} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                    เผยแพร่
+                  </button>
+                  <button type="button" onClick={() => void handleBulkStatus(Array.from(selected), "DRAFT")} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                    เป็นฉบับร่าง
+                  </button>
+                </>
+              )}
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => void handleArchive(Array.from(selected))}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                >
+                  <ArchiveIcon className="h-4 w-4" />
+                  ย้ายไปถังขยะ
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -191,7 +251,7 @@ export function PageManagerClient({
                 <td className="px-6 py-3.5">
                   <StatusSelectPill
                     value={page.status}
-                    disabled={showTrash}
+                    disabled={showTrash || !canPublish}
                     ariaLabel={`สถานะของ ${page.titleTh}`}
                     colorClass={
                       page.status === "PUBLISHED" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
@@ -212,6 +272,7 @@ export function PageManagerClient({
                 <td className="px-6 py-3.5">
                   <div className="flex items-center justify-end gap-3">
                     {showTrash ? (
+                      canDelete && (
                       <>
                         <button
                           type="button"
@@ -230,6 +291,7 @@ export function PageManagerClient({
                           <TrashIcon className="h-4 w-4" />
                         </button>
                       </>
+                      )
                     ) : (
                       <>
                         <Link
@@ -241,12 +303,23 @@ export function PageManagerClient({
                         </Link>
                         <button
                           type="button"
+                          onClick={() => void handleDuplicate(page.id)}
+                          aria-label={`ทำสำเนา ${page.titleTh}`}
+                          title="ทำสำเนา"
+                          className="text-slate-400 hover:text-brand-navy"
+                        >
+                          <CopyIcon className="h-4 w-4" />
+                        </button>
+                        {canDelete && (
+                        <button
+                          type="button"
                           onClick={() => void handleArchive([page.id])}
                           aria-label={`ย้ายไปถังขยะ ${page.titleTh}`}
                           className="text-red-400 hover:text-red-600"
                         >
                           <TrashIcon className="h-4 w-4" />
                         </button>
+                        )}
                       </>
                     )}
                   </div>

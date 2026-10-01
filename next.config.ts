@@ -30,6 +30,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Optional separate build folder, so a test build doesn't clobber a running dev server's .next.
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   devIndicators: false,
   experimental: {
     // Two root layouts (public site + admin) — app/global-not-found.tsx serves unmatched URLs.

@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import { PostListing } from "@/components/news/PostListing";
+import { localeAlternates } from "@/lib/i18n/alternates";
+import { ui } from "@/lib/i18n/ui";
 
-export const metadata: Metadata = {
-  title: "ข่าวสารและบทความ",
-  description: "ข่าวสาร กิจกรรม และบทความน่ารู้ด้านสุขภาพจาก Millimed BFS",
-  alternates: { canonical: "/news" },
-};
+export async function generateMetadata({ params }: PageProps<"/[locale]/news">): Promise<Metadata> {
+  const { locale } = await params;
+  return {
+    title: ui(locale, "newsAndArticles"),
+    description: ui(locale, "newsDesc"),
+    alternates: await localeAlternates(locale, "/news"),
+  };
+}
 
 export default async function NewsPage({ params, searchParams }: PageProps<"/[locale]/news">) {
   const { locale } = await params;

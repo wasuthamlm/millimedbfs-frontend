@@ -71,6 +71,9 @@ export function HeaderAppearanceForm({
               <option value="logo-left-menu-center">Logo ซ้าย / Menu กลาง</option>
               <option value="logo-left-menu-right">Logo ซ้าย / Menu ขวา</option>
               <option value="logo-center-menu-below">Logo กลาง / Menu ด้านล่าง</option>
+              <option value="menu-left-logo-center">Menu ซ้าย / Logo กลาง</option>
+              <option value="centered-stack">ทุกอย่างกึ่งกลาง (ซ้อนกัน)</option>
+              <option value="compact-actions-right">กะทัดรัด / ปุ่มด้านขวา</option>
             </select>
           </div>
           <div>
@@ -78,7 +81,7 @@ export function HeaderAppearanceForm({
             <select className={inputClass} value={form.height} onChange={(e) => update("height", e.target.value)}>
               <option value="compact">Compact</option>
               <option value="standard">Standard</option>
-              <option value="tall">Tall</option>
+              <option value="tall">Large</option>
             </select>
           </div>
           <div>
@@ -93,6 +96,7 @@ export function HeaderAppearanceForm({
             <label className={labelClass}>ตำแหน่ง</label>
             <select className={inputClass} value={form.position} onChange={(e) => update("position", e.target.value)}>
               <option value="fixed-top">Fixed ติดด้านบน</option>
+              <option value="sticky">Sticky (ติดเมื่อเลื่อน)</option>
               <option value="static">อยู่กับที่ (เลื่อนตามหน้า)</option>
             </select>
           </div>
@@ -149,6 +153,7 @@ export function HeaderAppearanceForm({
               <option value="small">เล็ก</option>
               <option value="normal">ปกติ</option>
               <option value="large">ใหญ่</option>
+              <option value="xlarge">ใหญ่มาก</option>
             </select>
           </div>
           <div>
@@ -158,8 +163,9 @@ export function HeaderAppearanceForm({
               value={form.menuLevels}
               onChange={(e) => update("menuLevels", Number(e.target.value))}
             >
-              <option value={1}>1 ลำดับ</option>
+              <option value={1}>1 ลำดับ (ซ่อนเมนูย่อย)</option>
               <option value={2}>2 ลำดับ</option>
+              <option value={3}>3 ลำดับ</option>
             </select>
           </div>
           <div>
@@ -171,6 +177,7 @@ export function HeaderAppearanceForm({
             >
               <option value="click-open">คลิกแล้วเปิด</option>
               <option value="hover-open">ชี้เมาส์แล้วเปิด</option>
+              <option value="mega">Mega Menu (แผงกว้าง)</option>
             </select>
           </div>
         </div>
@@ -206,7 +213,7 @@ export function HeaderAppearanceForm({
       <div className="flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">สิ่งที่แสดงใน Header</h2>
         <p className="-mt-2 text-xs text-slate-400">
-          หมายเหตุ: Search / Account / Cart เป็นสวิตช์เตรียมไว้สำหรับเมื่อฟีเจอร์เหล่านั้นถูกสร้างขึ้นจริงในเว็บไซต์
+          Search จะแสดงไอคอนค้นหา (ไปหน้า /search) · ภาษา จะแสดงปุ่มสลับภาษา · ไอคอนโซเชียลเปิดได้ที่ การตั้งค่า → โซเชียล · Account / Cart ยังไม่มีในเว็บไซต์
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           {(

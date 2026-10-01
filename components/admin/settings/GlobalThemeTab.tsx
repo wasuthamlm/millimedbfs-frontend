@@ -14,6 +14,8 @@ export type GlobalThemeData = {
   colorBackground: string;
   colorText: string;
   buttonRadius: string;
+  fontHeaderCustom: string;
+  fontBodyCustom: string;
 };
 
 const labelClass = "mb-1.5 block text-sm font-medium text-slate-700";
@@ -68,6 +70,17 @@ export function GlobalThemeTab({ initial }: { initial: GlobalThemeData }) {
           <label className={labelClass}>Font ตัวอักษรธรรมดา / Body</label>
           <Select value={form.fontBody} options={FONT_OPTIONS} onChange={(v) => update("fontBody", v)} />
         </div>
+        <div>
+          <label className={labelClass}>หรือ Google Font อื่นสำหรับหัวข้อ</label>
+          <input className={inputClass} placeholder="เช่น Kanit" value={form.fontHeaderCustom} onChange={(e) => update("fontHeaderCustom", e.target.value)} />
+        </div>
+        <div>
+          <label className={labelClass}>หรือ Google Font อื่นสำหรับเนื้อหา</label>
+          <input className={inputClass} placeholder="เช่น Noto Sans Thai" value={form.fontBodyCustom} onChange={(e) => update("fontBodyCustom", e.target.value)} />
+        </div>
+        <p className="text-xs text-slate-400 sm:col-span-2">
+          พิมพ์ชื่อตรงตาม fonts.google.com (ตัวอักษร ตัวเลข และช่องว่างเท่านั้น) — ถ้าระบุ จะใช้แทนฟอนต์ที่เลือกด้านบน
+        </p>
         <ColorField label="สี Primary" value={form.colorPrimary} onChange={(v) => update("colorPrimary", v)} />
         <ColorField label="สี Primary ตอน Hover" value={form.colorPrimaryHover} onChange={(v) => update("colorPrimaryHover", v)} />
         <ColorField label="สี Accent / สีทอง" value={form.colorAccent} onChange={(v) => update("colorAccent", v)} />

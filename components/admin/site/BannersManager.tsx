@@ -6,14 +6,76 @@ import Image from "next/image";
 import { PlusIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, XCircleIcon } from "@/components/ui/admin-icons";
 import { SaveButton } from "@/components/admin/SaveButton";
 import { Toggle } from "@/components/admin/Toggle";
+import { LinkSuggestInput } from "@/components/admin/LinkSuggestInput";
 import type { Banner } from "@/data/admin-banners";
-import { saveBanners } from "@/app/admin/site/banners/actions";
+import type { LinkOption } from "@/lib/link-options";
+import { saveBanners, type BannerStatus } from "@/app/admin/site/banners/actions";
+
+const MEDIA_TYPES: { value: NonNullable<Banner["mediaType"]>; label: string }[] = [
+  { value: "image", label: "รูปภาพ" },
+  { value: "video", label: "วิดีโอ (อัปโหลดไฟล์)" },
+  { value: "youtube", label: "YouTube" },
+  { value: "vimeo", label: "Vimeo" },
+];
+
+function BannerVideoUpload({ url, onChange }: { url: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    setError(null);
+    setUploading(true);
+    try {
+      onChange((await uploadMedia(file, { allowed: ["video"] })).url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "อัปโหลดไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div>
+      <label className={labelClass}>ไฟล์วิดีโอ (MP4/WebM — เล่นอัตโนมัติแบบไม่มีเสียง วนซ้ำ)</label>
+      <div className="flex items-start gap-4">
+        {url ? (
+          <video src={url} muted className="h-24 w-44 shrink-0 rounded-lg border border-slate-200 bg-black object-cover" />
+        ) : (
+          <div className="flex h-24 w-44 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-300">
+            ไม่มีวิดีโอ
+          </div>
+        )}
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+          className="rounded-full bg-brand-gold px-5 py-2 text-sm font-semibold text-brand-navy-dark transition-colors hover:bg-brand-gold-dark disabled:opacity-60"
+        >
+          {uploading ? "กำลังอัปโหลด..." : "อัปโหลดวิดีโอ"}
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="video/mp4,video/webm,video/quicktime"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleFile(file);
+          }}
+        />
+      </div>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-brand-navy";
 const labelClass = "mb-1.5 block text-xs font-medium text-slate-500";
 
-function BannerImagePicker({ image, onChange }: { image: string; onChange: (url: string) => void }) {
+function BannerImagePicker({ image, onChange, label = "Banner Image (แนะนำ: 1920x800px)" }: { image: string; onChange: (url: string) => void; label?: string }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -34,7 +96,7 @@ function BannerImagePicker({ image, onChange }: { image: string; onChange: (url:
 
   return (
     <div>
-      <label className={labelClass}>Banner Image (แนะนำ: 1920x800px)</label>
+      <label className={labelClass}>{label}</label>
       <div className="flex items-start gap-4">
         <div className="relative h-24 w-44 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
           {image ? (
@@ -77,8 +139,30 @@ function BannerImagePicker({ image, onChange }: { image: string; onChange: (url:
   );
 }
 
-export function BannersManager({ initialBanners }: { initialBanners: Banner[] }) {
+export function BannersManager({
+  initialBanners,
+  initialStatus,
+  canPublish,
+  linkOptions,
+}: {
+  initialBanners: Banner[];
+  initialStatus: BannerStatus;
+  canPublish: boolean;
+  linkOptions: LinkOption[];
+}) {
   const [banners, setBanners] = useState<Banner[]>(initialBanners);
+  const [status, setStatus] = useState<BannerStatus>(initialStatus);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const persist = async (next?: BannerStatus) => {
+    setSaveError(null);
+    const res = await saveBanners(banners, next);
+    if (res.error) {
+      setSaveError(res.error);
+      throw new Error(res.error);
+    }
+    setStatus(res.status);
+  };
 
   const move = (index: number, direction: -1 | 1) => {
     setBanners((prev) => {
@@ -113,6 +197,8 @@ export function BannersManager({ initialBanners }: { initialBanners: Banner[] })
         link: "",
         order: prev.length + 1,
         active: true,
+        mediaType: "image",
+        videoUrl: "",
       },
     ]);
   };
@@ -120,7 +206,14 @@ export function BannersManager({ initialBanners }: { initialBanners: Banner[] })
   return (
     <div className="flex flex-col gap-6">
       <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-sm font-semibold text-slate-900">รายการแบนเนอร์</h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-900">รายการแบนเนอร์</h2>
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-medium ${status === "PUBLISHED" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}
+          >
+            {status === "PUBLISHED" ? "เผยแพร่แล้ว" : "ฉบับร่าง — ยังไม่แสดงบนเว็บ"}
+          </span>
+        </div>
 
         <div className="flex flex-col gap-4">
           {banners.map((banner, index) => (
@@ -139,12 +232,43 @@ export function BannersManager({ initialBanners }: { initialBanners: Banner[] })
               <div className="flex flex-col gap-4">
                 <div>
                   <label className={labelClass}>Type</label>
-                  <select disabled className={`${inputClass} bg-slate-50 text-slate-500`} value="image">
-                    <option value="image">รูปภาพ</option>
+                  <select
+                    className={inputClass}
+                    value={banner.mediaType ?? "image"}
+                    onChange={(e) => update(banner.id, { mediaType: e.target.value as Banner["mediaType"] })}
+                  >
+                    {MEDIA_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                <BannerImagePicker image={banner.image} onChange={(url) => update(banner.id, { image: url })} />
+                {(banner.mediaType ?? "image") === "video" && (
+                  <BannerVideoUpload url={banner.videoUrl ?? ""} onChange={(url) => update(banner.id, { videoUrl: url })} />
+                )}
+                {(banner.mediaType === "youtube" || banner.mediaType === "vimeo") && (
+                  <div>
+                    <label className={labelClass}>ลิงก์ {banner.mediaType === "youtube" ? "YouTube" : "Vimeo"}</label>
+                    <input
+                      className={inputClass}
+                      value={banner.videoUrl ?? ""}
+                      onChange={(e) => update(banner.id, { videoUrl: e.target.value })}
+                      placeholder={banner.mediaType === "youtube" ? "https://www.youtube.com/watch?v=..." : "https://vimeo.com/123456"}
+                    />
+                  </div>
+                )}
+
+                <BannerImagePicker
+                  image={banner.image}
+                  onChange={(url) => update(banner.id, { image: url })}
+                  label={
+                    (banner.mediaType ?? "image") === "image"
+                      ? "Banner Image (แนะนำ: 1920x800px)"
+                      : "ภาพหน้าปก (Poster) — แสดงก่อนเล่นวิดีโอ (ไม่บังคับ)"
+                  }
+                />
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
@@ -199,11 +323,11 @@ export function BannersManager({ initialBanners }: { initialBanners: Banner[] })
 
                 <div>
                   <label className={labelClass}>Link URL (optional)</label>
-                  <input
+                  <LinkSuggestInput
                     className={inputClass}
                     value={banner.link}
-                    onChange={(e) => update(banner.id, { link: e.target.value })}
-                    placeholder="พิมพ์ชื่อหน้า เช่น /about หรือเลือกจากรายการ"
+                    onChange={(value) => update(banner.id, { link: value })}
+                    options={linkOptions}
                   />
                 </div>
 
@@ -260,8 +384,14 @@ export function BannersManager({ initialBanners }: { initialBanners: Banner[] })
         </button>
       </div>
 
-      <div className="flex justify-end">
-        <SaveButton onSave={() => saveBanners(banners)} />
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {saveError && <p className="mr-auto text-sm text-red-600">{saveError}</p>}
+        {!canPublish && <p className="mr-auto text-xs text-slate-500">บันทึกเป็นฉบับร่าง รอผู้อนุมัติเผยแพร่</p>}
+        {canPublish && status === "PUBLISHED" && (
+          <SaveButton label="ยกเลิกการเผยแพร่" className="!bg-slate-200 !text-slate-700" onSave={() => persist("DRAFT")} />
+        )}
+        <SaveButton label={canPublish ? "บันทึก" : "บันทึกฉบับร่าง"} onSave={() => persist()} />
+        {canPublish && status !== "PUBLISHED" && <SaveButton label="เผยแพร่" onSave={() => persist("PUBLISHED")} />}
       </div>
     </div>
   );

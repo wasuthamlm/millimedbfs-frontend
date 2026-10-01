@@ -19,16 +19,38 @@ export type MenuNode = {
   labelEn: string | null;
   href: string;
   active: boolean;
+  parentId: string | null;
+  openInNewTab: boolean;
   children: MenuNode[];
 };
 
-type FormState = { labelTh: string; labelEn: string; href: string };
+type FormState = { labelTh: string; labelEn: string; href: string; openInNewTab: boolean; parentId: string | null };
+
+const MAX_DEPTH = 3;
+
+/** Flattened list of places a node may move to (root + nodes shallow enough, never itself or its subtree). */
+function parentOptions(tree: MenuNode[], movingId: string) {
+  const height = (n: MenuNode): number => 1 + Math.max(0, ...n.children.map(height));
+  let movingHeight = 1;
+  const find = (nodes: MenuNode[]): void => nodes.forEach((n) => (n.id === movingId ? (movingHeight = height(n)) : find(n.children)));
+  find(tree);
+  const out: { id: string | null; label: string }[] = [{ id: null, label: "— เมนูหลัก (ระดับบนสุด) —" }];
+  const walk = (nodes: MenuNode[], depth: number, prefix: string) => {
+    for (const n of nodes) {
+      if (n.id === movingId) continue;
+      if (depth + movingHeight <= MAX_DEPTH) out.push({ id: n.id, label: `${prefix}${n.labelTh}` });
+      walk(n.children, depth + 1, `${prefix}— `);
+    }
+  };
+  walk(tree, 1, "");
+  return out;
+}
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy";
 
 function emptyForm(): FormState {
-  return { labelTh: "", labelEn: "", href: "" };
+  return { labelTh: "", labelEn: "", href: "", openInNewTab: false, parentId: null };
 }
 
 function countAll(nodes: MenuNode[]): number {
@@ -40,7 +62,15 @@ function maxDepth(nodes: MenuNode[], depth = 1): number {
   return Math.max(...nodes.map((n) => (n.children.length ? maxDepth(n.children, depth + 1) : depth)));
 }
 
-export function MenuManager({ initialTree }: { initialTree: MenuNode[] }) {
+export function MenuManager({
+  initialTree,
+  canDelete,
+  canReorderTop,
+}: {
+  initialTree: MenuNode[];
+  canDelete: boolean;
+  canReorderTop: boolean;
+}) {
   const [tree, setTree] = useState<MenuNode[]>(initialTree);
   const [expanded, setExpanded] = useState<Set<string>>(new Set(initialTree.map((n) => n.id)));
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,7 +117,7 @@ export function MenuManager({ initialTree }: { initialTree: MenuNode[] }) {
 
   const startEdit = (node: MenuNode) => {
     setEditingId(node.id);
-    setEditForm({ labelTh: node.labelTh, labelEn: node.labelEn ?? "", href: node.href });
+    setEditForm({ labelTh: node.labelTh, labelEn: node.labelEn ?? "", href: node.href, openInNewTab: node.openInNewTab, parentId: node.parentId });
     setError(null);
   };
 
@@ -98,13 +128,24 @@ export function MenuManager({ initialTree }: { initialTree: MenuNode[] }) {
     }
     setError(null);
     startTransition(async () => {
-      const res = await updateNavLink(id, { ...editForm, parentId: null });
+      const res = await updateNavLink(id, editForm);
       if (res.error) {
         setError(res.error);
         return;
       }
+      if (editForm.parentId !== findNode(tree, id)?.parentId) {
+        // Moved to another parent — simplest to rebuild the tree from the server.
+        window.location.reload();
+        return;
+      }
       updateTree((nodes) =>
-        mapNode(nodes, id, (n) => ({ ...n, labelTh: editForm.labelTh, labelEn: editForm.labelEn || null, href: editForm.href }))
+        mapNode(nodes, id, (n) => ({
+          ...n,
+          labelTh: editForm.labelTh,
+          labelEn: editForm.labelEn || null,
+          href: editForm.href,
+          openInNewTab: editForm.openInNewTab,
+        }))
       );
       setEditingId(null);
     });
@@ -249,6 +290,9 @@ export function MenuManager({ initialTree }: { initialTree: MenuNode[] }) {
                   if (dragId) reorderSiblings(dragId, targetId, parentId);
                   setDragId(null);
                 }}
+                canDelete={canDelete}
+                canReorderTop={canReorderTop}
+                moveTargets={editingId ? parentOptions(tree, editingId) : []}
               />
             ))}
           </tbody>
@@ -287,6 +331,10 @@ function AddForm({
         <label className="mb-1 block text-xs text-slate-500">URL (เว้นว่างได้ถ้าเป็นเมนูหลักที่มีแต่ดรอปดาวน์)</label>
         <input className={inputClass} value={form.href} onChange={(e) => setForm({ ...form, href: e.target.value })} placeholder="/example" />
       </div>
+      <label className="flex items-center gap-2 pb-2 text-xs text-slate-600">
+        <input type="checkbox" checked={form.openInNewTab} onChange={(e) => setForm({ ...form, openInNewTab: e.target.checked })} />
+        เปิดในแท็บใหม่
+      </label>
       <div className="flex gap-2">
         <button
           type="button"
@@ -328,7 +376,13 @@ function MenuRow({
   onToggle,
   onDragStart,
   onDrop,
+  canDelete,
+  canReorderTop,
+  moveTargets,
 }: {
+  canDelete: boolean;
+  canReorderTop: boolean;
+  moveTargets: { id: string | null; label: string }[];
   node: MenuNode;
   depth: number;
   parentId: string | null;
@@ -360,7 +414,7 @@ function MenuRow({
   return (
     <>
       <tr
-        draggable={!isEditing}
+        draggable={!isEditing && (depth > 0 || canReorderTop)}
         onDragStart={() => onDragStart(node.id)}
         onDragOver={(e) => e.preventDefault()}
         onDrop={() => onDrop(node.id, parentId)}
@@ -379,8 +433,25 @@ function MenuRow({
             </td>
             <td className="px-6 py-3">
               <input className={inputClass} value={editForm.href} onChange={(e) => setEditForm({ ...editForm, href: e.target.value })} />
+              <label className="mt-1 flex items-center gap-2 text-xs text-slate-600">
+                <input type="checkbox" checked={editForm.openInNewTab} onChange={(e) => setEditForm({ ...editForm, openInNewTab: e.target.checked })} />
+                เปิดในแท็บใหม่
+              </label>
             </td>
-            <td className="px-6 py-3" />
+            <td className="px-6 py-3">
+              <label className="mb-1 block text-xs text-slate-500">อยู่ใต้เมนู</label>
+              <select
+                className={inputClass}
+                value={editForm.parentId ?? ""}
+                onChange={(e) => setEditForm({ ...editForm, parentId: e.target.value || null })}
+              >
+                {moveTargets.map((t) => (
+                  <option key={t.id ?? "root"} value={t.id ?? ""}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </td>
             <td className="px-6 py-3">
               <div className="flex items-center justify-end gap-2">
                 <button type="button" disabled={pending} onClick={() => onSubmitEdit(node.id)} className="rounded-md px-2 py-1 text-xs font-medium text-brand-navy hover:bg-slate-100">
@@ -406,6 +477,7 @@ function MenuRow({
                 )}
                 <div>
                   <span className="font-medium text-slate-800">{node.labelTh}</span>
+                  {node.openInNewTab && <span className="ml-1.5 text-xs text-slate-400" title="เปิดในแท็บใหม่">↗</span>}
                   {node.labelEn && <span className="ml-1.5 text-xs text-slate-400">{node.labelEn}</span>}
                 </div>
                 {hasChildren && (
@@ -428,15 +500,17 @@ function MenuRow({
             </td>
             <td className="px-6 py-3.5">
               <div className="flex items-center justify-end gap-1">
-                <button
-                  type="button"
-                  onClick={() => onOpenAdd(node.id)}
-                  aria-label="เพิ่มเมนูย่อย"
-                  title="เพิ่มเมนูย่อย"
-                  className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-navy"
-                >
-                  <PlusIcon className="h-4 w-4" />
-                </button>
+                {depth < MAX_DEPTH - 1 && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenAdd(node.id)}
+                    aria-label="เพิ่มเมนูย่อย"
+                    title="เพิ่มเมนูย่อย"
+                    className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-navy"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => onStartEdit(node)}
@@ -445,14 +519,16 @@ function MenuRow({
                 >
                   <PencilIcon className="h-4 w-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onRemove(node.id)}
-                  aria-label="ลบ"
-                  className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => onRemove(node.id)}
+                    aria-label="ลบ"
+                    className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </td>
           </>
@@ -494,6 +570,9 @@ function MenuRow({
             onToggle={onToggle}
             onDragStart={onDragStart}
             onDrop={onDrop}
+            canDelete={canDelete}
+            canReorderTop={canReorderTop}
+            moveTargets={moveTargets}
           />
         ))}
     </>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { SiteSettingsTab, type SiteSettingsData, type ContactInfoData, type BrandingData } from "./SiteSettingsTab";
 import { GlobalThemeTab, type GlobalThemeData } from "./GlobalThemeTab";
-import { LocalesTab } from "./LocalesTab";
+import { LocalesTab, type LanguageRow } from "./LocalesTab";
 import { AiSettingsTab, type AiSettingsData } from "./AiSettingsTab";
 import { ChangePasswordForm } from "./ChangePasswordForm";
 
@@ -24,12 +24,14 @@ export function SettingsClient({
   branding,
   globalTheme,
   aiSettings,
+  languages,
 }: {
   siteSettings: SiteSettingsData;
   contactInfo: ContactInfoData;
   branding: BrandingData;
   globalTheme: GlobalThemeData;
   aiSettings: AiSettingsData;
+  languages: LanguageRow[];
 }) {
   const [tab, setTab] = useState<TabKey>("site");
 
@@ -55,7 +57,7 @@ export function SettingsClient({
         <SiteSettingsTab siteSettings={siteSettings} contactInfo={contactInfo} branding={branding} />
       )}
       {tab === "global" && <GlobalThemeTab initial={globalTheme} />}
-      {tab === "locales" && <LocalesTab />}
+      {tab === "locales" && <LocalesTab initial={languages} />}
       {tab === "ai" && <AiSettingsTab initial={aiSettings} />}
       {tab === "account" && <ChangePasswordForm />}
     </div>

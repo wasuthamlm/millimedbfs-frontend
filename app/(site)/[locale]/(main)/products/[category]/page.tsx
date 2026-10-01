@@ -1,73 +1,73 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { Container } from "@/components/ui/Container";
-import { PRODUCT_CARD_SELECT, ProductGrid } from "@/components/products/ProductGrid";
+import { ProductListing } from "@/components/products/ProductListing";
 import { prisma } from "@/lib/prisma";
 import { decodeParam, productPath } from "@/lib/public-urls";
 import { localePath } from "@/lib/i18n/locales";
+import { loadLocalizer } from "@/lib/i18n/localize";
+import { localeAlternates } from "@/lib/i18n/alternates";
+import { categoryTreeIds, parseListingParams } from "@/lib/product-listing";
 
-type Params = { locale: string; category: string };
+export const dynamic = "force-dynamic";
+
+type Props = PageProps<"/[locale]/products/[category]">;
 
 async function getCategory(slug: string) {
   const category = await prisma.productCategory.findUnique({ where: { slug } });
   return category?.active && category.status === "PUBLISHED" ? category : null;
 }
 
-/** The category plus every descendant — a parent's page lists its sub-categories' products too. */
-async function categoryTreeIds(rootId: string): Promise<string[]> {
-  const all = await prisma.productCategory.findMany({ select: { id: true, parentId: true } });
-  const ids = [rootId];
-  for (let i = 0; i < ids.length; i++) {
-    for (const c of all) if (c.parentId === ids[i]) ids.push(c.id);
-  }
-  return ids;
-}
-
-export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
-  const category = await getCategory(decodeParam((await params).category));
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const [{ locale, category: raw }, sp] = await Promise.all([params, searchParams]);
+  const category = await getCategory(decodeParam(raw));
   if (!category) return {};
+  const t = await loadLocalizer(locale, [["PRODUCT_CATEGORY", [category.id]]]);
+  const listing = parseListingParams(sp);
   return {
-    title: category.nameTh,
-    description: category.descriptionTh || undefined,
-    alternates: { canonical: `/products/${encodeURIComponent(category.slug)}` },
+    title: t("PRODUCT_CATEGORY", category.id, "name", category.nameTh, category.nameEn),
+    description: t("PRODUCT_CATEGORY", category.id, "description", category.descriptionTh, category.descriptionEn) || undefined,
+    alternates: await localeAlternates(locale, `/products/${encodeURIComponent(category.slug)}`),
+    ...(listing.q || listing.price !== "all" || listing.sort !== "default" ? { robots: { index: false, follow: true } } : {}),
   };
 }
 
-export default async function ProductCategoryPage({ params }: { params: Promise<Params> }) {
-  const { locale, category: rawCategory } = await params;
+export default async function ProductCategoryPage({ params, searchParams }: Props) {
+  const [{ locale, category: rawCategory }, sp] = await Promise.all([params, searchParams]);
   const slug = decodeParam(rawCategory);
   const category = await getCategory(slug);
 
   if (!category) {
     // Old /products/<uuid> URLs from before the legacy URL scheme was restored.
-    const product = await prisma.product.findUnique({
-      where: { id: slug },
-      select: { slug: true, sku: true, status: true, category: { select: { slug: true } } },
-    }).catch(() => null);
+    const product = await prisma.product
+      .findUnique({
+        where: { id: slug },
+        select: { slug: true, sku: true, status: true, category: { select: { slug: true } } },
+      })
+      .catch(() => null);
     if (product?.status === "ACTIVE") permanentRedirect(localePath(locale, productPath(product)));
     notFound();
   }
 
-  const ids = await categoryTreeIds(category.id);
-  const products = await prisma.product.findMany({
-    where: {
-      status: "ACTIVE",
-      deletedAt: null,
-      OR: [{ categoryId: { in: ids } }, { subCategoryId: { in: ids } }],
-    },
-    orderBy: [{ order: "asc" }, { updatedAt: "desc" }],
-    select: PRODUCT_CARD_SELECT,
-  });
+  // The top-level ancestor decides which category tab is highlighted.
+  const all = await prisma.productCategory.findMany({ select: { id: true, parentId: true } });
+  let rootId = category.id;
+  for (let guard = 0; guard < 10; guard++) {
+    const parent = all.find((c) => c.id === rootId)?.parentId;
+    if (!parent) break;
+    rootId = parent;
+  }
+
+  const t = await loadLocalizer(locale, [["PRODUCT_CATEGORY", [category.id]]]);
 
   return (
-    <Container className="flex flex-col gap-8 py-14 sm:py-20">
-      <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">{category.nameTh}</h1>
-      {category.descriptionTh && <p className="max-w-3xl text-slate-600">{category.descriptionTh}</p>}
-      {products.length === 0 ? (
-        <p className="py-16 text-center text-slate-400">ยังไม่มีสินค้าในหมวดนี้</p>
-      ) : (
-        <ProductGrid products={products} locale={locale} />
-      )}
-    </Container>
+    <ProductListing
+      locale={locale}
+      params={parseListingParams(sp)}
+      title={t("PRODUCT_CATEGORY", category.id, "name", category.nameTh, category.nameEn)}
+      subtitle={t("PRODUCT_CATEGORY", category.id, "description", category.descriptionTh, category.descriptionEn)}
+      activeCategory={category}
+      activeRootId={rootId}
+      categoryIds={await categoryTreeIds(category.id)}
+    />
   );
 }

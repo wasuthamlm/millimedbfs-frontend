@@ -1,19 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { TRANSLATION_LOCALES } from "@/lib/translation-locales";
+import { getEnabledLocales } from "@/lib/i18n/enabled-locales";
+import { TRANSLATABLE_TYPES, translatableIds } from "@/lib/translation-sources";
 import { TranslationStatusClient } from "@/components/admin/translations/TranslationStatusClient";
 
 export const dynamic = "force-dynamic";
 
-const CONTENT_TYPES = [
-  { type: "ARTICLE" as const, label: "Articles" },
-  { type: "PRODUCT" as const, label: "Products" },
-];
-
 export default async function AdminTranslationsPage() {
-  const [postCount, productCount, translations] = await Promise.all([
-    prisma.post.count(),
-    prisma.product.count(),
-    prisma.translation.findMany({ select: { entityType: true, entityId: true, locale: true } }),
+  const [enabled, translations, idLists] = await Promise.all([
+    getEnabledLocales(),
+    prisma.translation.findMany({ select: { entityType: true, entityId: true, locale: true }, distinct: ["entityType", "entityId", "locale"] }),
+    Promise.all(TRANSLATABLE_TYPES.map((t) => translatableIds(t.type))),
   ]);
 
   const translatedIdsByKey = new Map<string, Set<string>>();
@@ -23,17 +20,21 @@ export default async function AdminTranslationsPage() {
     translatedIdsByKey.get(key)!.add(t.entityId);
   }
 
-  const totals: Record<string, number> = { ARTICLE: postCount, PRODUCT: productCount };
+  // Only languages switched on in Settings → ภาษา are listed (Thai is the source language).
+  const locales = TRANSLATION_LOCALES.filter((l) => enabled.includes(l.code));
 
-  const sections = CONTENT_TYPES.map((ct) => ({
-    type: ct.type,
-    label: ct.label,
-    total: totals[ct.type],
-    locales: TRANSLATION_LOCALES.map((locale) => ({
-      ...locale,
-      translatedCount: translatedIdsByKey.get(`${ct.type}:${locale.code}`)?.size ?? 0,
-    })),
-  }));
+  const sections = TRANSLATABLE_TYPES.map((ct, i) => {
+    const ids = new Set(idLists[i]);
+    return {
+      type: ct.type,
+      label: ct.label,
+      total: ids.size,
+      locales: locales.map((locale) => ({
+        ...locale,
+        translatedCount: [...(translatedIdsByKey.get(`${ct.type}:${locale.code}`) ?? [])].filter((id) => ids.has(id)).length,
+      })),
+    };
+  });
 
   return <TranslationStatusClient sections={sections} />;
 }

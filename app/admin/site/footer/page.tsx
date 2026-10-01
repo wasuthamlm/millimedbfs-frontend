@@ -3,6 +3,9 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { ListIconGlyph } from "@/components/ui/admin-icons";
 import { FooterManager } from "@/components/admin/site/FooterManager";
 import { prisma } from "@/lib/prisma";
+import { FooterBlocksEditor } from "@/components/admin/site/FooterBlocksEditor";
+import { getSiteConfig, SITE_CONFIG_KEYS } from "@/lib/site-config";
+import { EMPTY_FOOTER_BLOCKS } from "@/lib/footer-blocks";
 import type { FooterColumn } from "@/data/admin-footer";
 import type { FooterThemeInput } from "./actions";
 
@@ -10,13 +13,14 @@ export const metadata: Metadata = { title: "จัดการ Footer" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminFooterPage() {
-  const [columnRows, contactRow, config] = await Promise.all([
+  const [columnRows, contactRow, config, blocks] = await Promise.all([
     prisma.footerColumn.findMany({
       orderBy: { order: "asc" },
       include: { links: { orderBy: { order: "asc" } } },
     }),
     prisma.footerContact.findUnique({ where: { id: "singleton" } }),
     prisma.footerConfig.findUnique({ where: { id: "singleton" } }),
+    getSiteConfig(SITE_CONFIG_KEYS.footerBlocks, EMPTY_FOOTER_BLOCKS),
   ]);
 
   const initialColumns: FooterColumn[] = columnRows.map((col) => ({
@@ -45,6 +49,7 @@ export default async function AdminFooterPage() {
     <div className="flex flex-col gap-6">
       <PageHeader icon={ListIconGlyph} title="จัดการ Footer" subtitle="แก้ไขข้อมูล บล็อก ข้อมูลติดต่อ และลิงก์ด้านล่างของเว็บไซต์ทุกหน้า" />
       <FooterManager initialColumns={initialColumns} initialContact={initialContact} initialTheme={initialTheme} />
+      <FooterBlocksEditor initial={blocks} />
     </div>
   );
 }

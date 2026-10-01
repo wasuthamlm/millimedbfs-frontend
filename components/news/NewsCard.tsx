@@ -2,8 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "@/components/ui/icons";
 import type { NewsView as NewsItem } from "@/lib/post-view";
+import { ui } from "@/lib/i18n/ui";
 
-export function NewsCard({ item }: { item: NewsItem }) {
+export function NewsCard({ item, locale = "th" }: { item: NewsItem; locale?: string }) {
   return (
     <div className="flex gap-4 rounded-xl border border-slate-100 p-3 transition-shadow hover:shadow-md">
       <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg sm:h-24 sm:w-32">
@@ -17,7 +18,7 @@ export function NewsCard({ item }: { item: NewsItem }) {
           href={item.href}
           className="inline-flex items-center gap-1 text-sm font-medium text-brand-navy hover:text-brand-gold-dark"
         >
-          อ่านต่อ
+          {ui(locale, "readMore")}
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>

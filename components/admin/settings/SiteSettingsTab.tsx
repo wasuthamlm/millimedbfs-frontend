@@ -4,6 +4,9 @@ import { useState } from "react";
 import { SaveButton } from "@/components/admin/SaveButton";
 import { Select } from "@/components/admin/Select";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { TrackingComplianceNotice } from "@/components/admin/settings/TrackingComplianceNotice";
+import { SparklesIcon } from "@/components/ui/admin-icons";
+import { aiSuggestSeoDefaults } from "@/app/admin/ai/actions";
 import {
   saveGeneralSettings,
   saveHomepageSettings,
@@ -147,6 +150,8 @@ export function SiteSettingsTab({
     tiktokPixelId: siteSettings.tiktokPixelId,
   });
   const [seo, setSeo] = useState({ seoMetaTitleTh: siteSettings.seoMetaTitleTh, seoMetaDescTh: siteSettings.seoMetaDescTh });
+  const [seoAiPending, setSeoAiPending] = useState(false);
+  const [seoAiError, setSeoAiError] = useState<string | null>(null);
   const [social, setSocial] = useState({
     facebookUrl: siteSettings.facebookUrl,
     instagramUrl: siteSettings.instagramUrl,
@@ -212,11 +217,34 @@ export function SiteSettingsTab({
         <Field label="GA4 Measurement ID" value={analytics.ga4Id} placeholder="G-XXXXXXXXXX" onChange={(v) => setAnalytics((s) => ({ ...s, ga4Id: v }))} />
         <Field label="Facebook Pixel ID" value={analytics.fbPixelId} onChange={(v) => setAnalytics((s) => ({ ...s, fbPixelId: v }))} />
         <Field label="TikTok Pixel ID" value={analytics.tiktokPixelId} onChange={(v) => setAnalytics((s) => ({ ...s, tiktokPixelId: v }))} />
+        <TrackingComplianceNotice values={analytics} />
       </Card>
 
       <Card title="SEO" onSave={() => saveSeoDefaults(seo).then(() => {})}>
         <Field label="Default Meta Title TH" value={seo.seoMetaTitleTh} onChange={(v) => setSeo((s) => ({ ...s, seoMetaTitleTh: v }))} full />
         <TextAreaField label="Default Meta Description TH" value={seo.seoMetaDescTh} onChange={(v) => setSeo((s) => ({ ...s, seoMetaDescTh: v }))} />
+        <div className="flex items-center gap-3 sm:col-span-2">
+          <button
+            type="button"
+            disabled={seoAiPending}
+            onClick={async () => {
+              setSeoAiPending(true);
+              setSeoAiError(null);
+              const res = await aiSuggestSeoDefaults({
+                siteName: general.siteNameTh || general.siteNameEn,
+                about: `${brand.taglineTh} ${contact.companyNameTh}`,
+              });
+              setSeoAiPending(false);
+              if (res.error || !res.data) setSeoAiError(res.error ?? "AI ทำงานไม่สำเร็จ");
+              else setSeo(res.data);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            <SparklesIcon className="h-3.5 w-3.5" />
+            {seoAiPending ? "AI กำลังคิด..." : "แนะนำด้วย AI"}
+          </button>
+          {seoAiError && <span className="text-xs text-red-600">{seoAiError}</span>}
+        </div>
       </Card>
 
       <Card title="Social Media" onSave={() => saveSocialSettings(social).then(() => {})}>

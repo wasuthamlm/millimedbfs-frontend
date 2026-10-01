@@ -14,11 +14,11 @@ import { prisma } from "@/lib/prisma";
 type TextSource = { label: string; text: string };
 
 async function loadTextSources(): Promise<TextSource[]> {
-  const [posts, products, sections, translations, header, footerConfig, footerContact, bannerConfig, widgets, theme, settings] =
+  const [posts, products, sections, translations, header, footerConfig, footerContact, bannerConfig, widgets, theme, settings, banners, popups, siteConfigs, gallery, landings] =
     await Promise.all([
       prisma.post.findMany({ select: { titleTh: true, slug: true, bodyTh: true, bodyEn: true, excerptTh: true, excerptEn: true } }),
       prisma.product.findMany({ select: { nameTh: true, sku: true, descriptionTh: true, descriptionEn: true } }),
-      prisma.pageSection.findMany({ select: { config: true, page: { select: { slug: true } } } }),
+      prisma.pageSection.findMany({ select: { config: true, page: { select: { slug: true } }, landingPage: { select: { slug: true } } } }),
       prisma.translation.findMany({ select: { entityType: true, value: true } }),
       prisma.siteHeaderConfig.findMany(),
       prisma.footerConfig.findMany(),
@@ -27,6 +27,11 @@ async function loadTextSources(): Promise<TextSource[]> {
       prisma.widget.findMany(),
       prisma.globalTheme.findMany(),
       prisma.siteSettings.findMany(),
+      prisma.banner.findMany({ select: { videoUrl: true, posterUrl: true } }),
+      prisma.popup.findMany({ select: { titleTh: true, imageUrl: true, bodyTh: true, bodyEn: true } }),
+      prisma.siteConfig.findMany(),
+      prisma.productImage.findMany({ select: { url: true, product: { select: { nameTh: true } } } }),
+      prisma.landingPage.findMany(),
     ]);
 
   const sources: TextSource[] = [];
@@ -43,8 +48,15 @@ async function loadTextSources(): Promise<TextSource[]> {
     });
   }
   for (const s of sections) {
-    if (s.config) sources.push({ label: `หน้า: ${s.page?.slug ?? "-"}`, text: JSON.stringify(s.config) });
+    if (s.config) {
+      const label = s.landingPage ? `Landing: /lp/${s.landingPage.slug}` : `หน้า: ${s.page?.slug ?? "-"}`;
+      sources.push({ label, text: JSON.stringify(s.config) });
+    }
   }
+  for (const p of popups) sources.push({ label: `Popup: ${p.titleTh || "-"}`, text: [p.imageUrl, p.bodyTh, p.bodyEn].filter(Boolean).join("\n") });
+  for (const g of gallery) sources.push({ label: `สินค้า: ${g.product.nameTh}`, text: g.url });
+  for (const l of landings) sources.push({ label: `Landing: /lp/${l.slug}`, text: JSON.stringify(l) });
+  for (const c of siteConfigs) sources.push({ label: `ตั้งค่าเว็บไซต์ (${c.key})`, text: JSON.stringify(c.value) });
   for (const t of translations) {
     sources.push({ label: `คำแปล: ${t.entityType}`, text: t.value });
   }
@@ -53,6 +65,7 @@ async function loadTextSources(): Promise<TextSource[]> {
     ["ส่วนท้ายเว็บ (Footer)", footerConfig],
     ["ส่วนท้ายเว็บ (Footer)", footerContact],
     ["แบนเนอร์หน้าแรก", bannerConfig],
+    ["แบนเนอร์หน้าแรก", banners],
     ["Widgets", widgets],
     ["ธีมเว็บไซต์", theme],
     ["ตั้งค่าเว็บไซต์", settings],

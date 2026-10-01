@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/Container";
+import { PageHero } from "@/components/site/PageHero";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { Pager } from "@/components/admin/Pager";
 import { prisma } from "@/lib/prisma";
 import { POST_CARD_INCLUDE, toArticleView } from "@/lib/post-view";
 import { localePath } from "@/lib/i18n/locales";
 import { cn } from "@/lib/utils";
+import { loadLocalizer } from "@/lib/i18n/localize";
+import { ui } from "@/lib/i18n/ui";
 
 const PAGE_SIZE = 9;
 
@@ -25,7 +28,7 @@ export async function PostListing({
   const types = await prisma.articleCategory.findMany({
     where: { active: true, status: "PUBLISHED", posts: { some: { status: "PUBLISHED", deletedAt: null } } },
     orderBy: { order: "asc" },
-    select: { id: true, slug: true, nameTh: true },
+    select: { id: true, slug: true, nameTh: true, nameEn: true },
   });
   const activeType = typeSlug ? types.find((t) => t.slug === typeSlug) : undefined;
 
@@ -45,6 +48,11 @@ export async function PostListing({
     prisma.post.count({ where }),
   ]);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const t = await loadLocalizer(locale, [
+    ["ARTICLE", posts.map((p) => p.id)],
+    ["ARTICLE_CATEGORY", types.map((c) => c.id)],
+  ]);
+  const typeName = (c: (typeof types)[number]) => t("ARTICLE_CATEGORY", c.id, "name", c.nameTh, c.nameEn);
   const basePath = localePath(locale, activeType ? `/news/${encodeURIComponent(activeType.slug)}` : "/news");
 
   const tabClass = (active: boolean) =>
@@ -54,12 +62,13 @@ export async function PostListing({
     );
 
   return (
-    <Container className="flex flex-col gap-8 py-14 sm:py-20">
-      <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">{activeType?.nameTh ?? "ข่าวสารและบทความ"}</h1>
+    <>
+    <PageHero title={activeType ? typeName(activeType) : ui(locale, "newsAndArticles")} />
+    <Container className="flex flex-col gap-8 py-10 sm:py-14">
       {types.length > 1 && (
-        <nav className="flex flex-wrap gap-2" aria-label="ประเภทบทความ">
+        <nav className="flex flex-wrap gap-2" aria-label={ui(locale, "articleTypes")}>
           <Link href={localePath(locale, "/news")} className={tabClass(!activeType)}>
-            ทั้งหมด
+            {ui(locale, "all")}
           </Link>
           {types.map((t) => (
             <Link
@@ -67,22 +76,23 @@ export async function PostListing({
               href={localePath(locale, `/news/${encodeURIComponent(t.slug)}`)}
               className={tabClass(activeType?.id === t.id)}
             >
-              {t.nameTh}
+              {typeName(t)}
             </Link>
           ))}
         </nav>
       )}
       {posts.length === 0 ? (
-        <p className="py-16 text-center text-slate-400">ยังไม่มีบทความ</p>
+        <p className="py-16 text-center text-slate-400">{ui(locale, "noArticles")}</p>
       ) : (
         <div className="grid grid-cols-2 gap-6 md:grid-cols-3">
           {posts.map((post) => {
-            const view = toArticleView(post);
+            const view = toArticleView(post, t);
             return <ArticleCard key={post.id} article={{ ...view, href: localePath(locale, view.href) }} />;
           })}
         </div>
       )}
-      <Pager page={page} totalPages={totalPages} basePath={basePath} />
+      <Pager page={page} totalPages={totalPages} basePath={basePath} locale={locale} />
     </Container>
+    </>
   );
 }

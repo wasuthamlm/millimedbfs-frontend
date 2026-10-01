@@ -1,7 +1,7 @@
 "use client";
 
 // Marketing-pixel loaders — only called once marketing consent is granted
-// (components/layout/TrackingConsentGate.tsx). GTM and GA4 stay unconditional
+// (components/analytics/TrackingManager.tsx). GTM and GA4 stay unconditional
 // server-rendered <Script> tags in app/(site)/layout.tsx: per Google Consent Mode v2,
 // those tags may load immediately as long as the "default denied" signal was pushed
 // first — they read consent state themselves and downgrade to cookieless behavior.
@@ -9,22 +9,17 @@
 // collecting data as soon as their script runs, so they must not load at all until
 // the visitor opts in. Ported from the legacy site's src/lib/consent/trackers.js.
 
-/** Meta Pixel ID — digits only */
-export const sanitizeMetaPixelId = (v: string | null | undefined) => {
-  const id = (v || "").trim();
-  return /^[0-9]{6,20}$/.test(id) ? id : "";
-};
+import { sanitizeMetaPixelId, sanitizeTiktokPixelId } from "@/lib/tracking-ids";
+import { markMarketingSdkTouched } from "@/lib/analytics/hardNavigation";
 
-/** TikTok Pixel ID — alphanumeric token */
-export const sanitizeTiktokPixelId = (v: string | null | undefined) => {
-  const id = (v || "").trim();
-  return /^[A-Za-z0-9]{6,40}$/.test(id) ? id : "";
-};
+export { sanitizeMetaPixelId, sanitizeTiktokPixelId };
 
 export function loadMetaPixel(pixelId: string | null | undefined): boolean {
   const id = sanitizeMetaPixelId(pixelId);
   if (!id || window.__millimedbfsMetaPixelLoaded) return false;
   window.__millimedbfsMetaPixelLoaded = true;
+  // From here on the SDK lives in this document — later navigations become full page loads.
+  markMarketingSdkTouched();
   /* eslint-disable */
   (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
     if (f.fbq) return;
@@ -44,7 +39,7 @@ export function loadMetaPixel(pixelId: string | null | undefined): boolean {
   })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
   /* eslint-enable */
   window.fbq!("init", id);
-  // The first PageView is fired by TrackingConsentGate's pathname effect (same render
+  // The first PageView is fired by TrackingManager's pathname effect (same render
   // pass), not here — keeping it there avoids double-firing on load.
   return true;
 }
@@ -53,6 +48,7 @@ export function loadTiktokPixel(pixelId: string | null | undefined): boolean {
   const id = sanitizeTiktokPixelId(pixelId);
   if (!id || window.__millimedbfsTikTokPixelLoaded) return false;
   window.__millimedbfsTikTokPixelLoaded = true;
+  markMarketingSdkTouched();
   /* eslint-disable */
   (function (w: any, d: any, t: any) {
     w.TiktokAnalyticsObject = t;
@@ -84,7 +80,7 @@ export function loadTiktokPixel(pixelId: string | null | undefined): boolean {
       a.parentNode!.insertBefore(o, a);
     };
     ttq.load(id);
-    // First page() call is fired by TrackingConsentGate's pathname effect, not here.
+    // First page() call is fired by TrackingManager's pathname effect, not here.
   })(window, document, "ttq");
   /* eslint-enable */
   return true;

@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import { CmsPageOrPlaceholder } from "@/components/site/CmsPageOrPlaceholder";
+import { CmsPageOrPlaceholder, cmsPageMetadata } from "@/components/site/CmsPageOrPlaceholder";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "อาคารโรงงาน 1",
-  alternates: { canonical: "/factory/building-1" },
-};
+export async function generateMetadata({ params }: PageProps<"/[locale]/factory/building-1">): Promise<Metadata> {
+  const { locale } = await params;
+  return cmsPageMetadata(locale, "factory/building-1", { title: "อาคารโรงงาน 1" });
+}
 
-export default function FactoryBuilding1Page() {
-  return <CmsPageOrPlaceholder slug="factory/building-1" title="อาคารโรงงาน 1" />;
+export default async function FactoryBuilding1Page({ params }: PageProps<"/[locale]/factory/building-1">) {
+  const { locale } = await params;
+  return <CmsPageOrPlaceholder locale={locale} slug="factory/building-1" title="อาคารโรงงาน 1" />;
 }

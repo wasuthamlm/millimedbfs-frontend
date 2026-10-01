@@ -1,23 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X, ChevronDown } from "@/components/ui/icons";
 import type { NavLink } from "@/data/nav";
 import { cn } from "@/lib/utils";
+import { splitLocale } from "@/lib/i18n/locales";
+import { ui } from "@/lib/i18n/ui";
+import { MenuLink } from "./NavDropdown";
+import { LanguageSwitcher, type SwitcherLanguage } from "./LanguageSwitcher";
 
-export function MobileNav({ navLinks, iconColor }: { navLinks: NavLink[]; iconColor?: string }) {
+export function MobileNav({
+  navLinks,
+  iconColor,
+  languages = [],
+}: {
+  navLinks: NavLink[];
+  iconColor?: string;
+  languages?: SwitcherLanguage[];
+}) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const pathname = usePathname();
+  const { locale } = splitLocale(pathname || "/");
 
   return (
     <div className="lg:hidden">
       <button
         type="button"
-        aria-label="เปิดเมนู"
+        aria-label={ui(locale, "openMenu")}
         onClick={() => setOpen(true)}
         style={iconColor ? { color: iconColor } : undefined}
         className={cn("rounded-md p-2 hover:bg-black/5", !iconColor && "text-slate-700")}
@@ -43,10 +55,13 @@ export function MobileNav({ navLinks, iconColor }: { navLinks: NavLink[]; iconCo
               className="fixed inset-y-0 left-0 z-50 w-72 overflow-y-auto bg-white p-5 shadow-xl"
             >
               <div className="mb-4 flex items-center justify-between">
-                <span className="text-lg font-bold text-brand-navy">เมนู</span>
+                <span className="flex items-center gap-2 text-lg font-bold text-brand-navy">
+                  {ui(locale, "menu")}
+                  <LanguageSwitcher languages={languages} compact />
+                </span>
                 <button
                   type="button"
-                  aria-label="ปิดเมนู"
+                  aria-label={ui(locale, "closeMenu")}
                   onClick={() => setOpen(false)}
                   className="rounded-md p-2 text-slate-500 hover:bg-slate-100"
                 >
@@ -65,9 +80,9 @@ export function MobileNav({ navLinks, iconColor }: { navLinks: NavLink[]; iconCo
                   const key = link.id ?? link.href ?? link.label;
                   if (!link.children) {
                     return (
-                      <Link
+                      <MenuLink
                         key={key}
-                        href={link.href}
+                        link={link}
                         onClick={() => setOpen(false)}
                         className={cn(
                           "rounded-lg px-3 py-2 text-sm font-medium",
@@ -75,9 +90,7 @@ export function MobileNav({ navLinks, iconColor }: { navLinks: NavLink[]; iconCo
                             ? "bg-brand-navy text-white"
                             : "text-slate-700 hover:bg-slate-100"
                         )}
-                      >
-                        {link.label}
-                      </Link>
+                      />
                     );
                   }
                   const isExpanded = expanded === key;
@@ -104,15 +117,21 @@ export function MobileNav({ navLinks, iconColor }: { navLinks: NavLink[]; iconCo
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden pl-4"
                           >
+                            {link.href && link.href !== "#" && (
+                              <MenuLink link={link} onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" />
+                            )}
                             {link.children.map((child) => (
-                              <Link
-                                key={child.id ?? child.href ?? child.label}
-                                href={child.href}
-                                onClick={() => setOpen(false)}
-                                className="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                              >
-                                {child.label}
-                              </Link>
+                              <div key={child.id ?? child.href ?? child.label}>
+                                <MenuLink link={child} onClick={() => setOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50" />
+                                {child.children?.map((g) => (
+                                  <MenuLink
+                                    key={g.id ?? g.href ?? g.label}
+                                    link={g}
+                                    onClick={() => setOpen(false)}
+                                    className="block rounded-lg py-1.5 pl-7 pr-3 text-xs text-slate-500 hover:bg-slate-50"
+                                  />
+                                ))}
+                              </div>
                             ))}
                           </motion.div>
                         )}

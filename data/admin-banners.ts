@@ -10,6 +10,9 @@ export type Banner = {
   link: string;
   order: number;
   active: boolean;
+  /** "image" | "video" (uploaded file) | "youtube" | "vimeo" */
+  mediaType?: "image" | "video" | "youtube" | "vimeo";
+  videoUrl?: string;
 };
 
 export const banners: Banner[] = [

@@ -14,6 +14,10 @@ export type CategoryRow = {
   active: boolean;
   parentId: string | null;
   itemCount: number;
+  descriptionTh: string | null;
+  descriptionEn: string | null;
+  /** First few item names, shown as a hover tooltip on the count. */
+  itemTitles: string[];
 };
 
 export type CategoryFormInput = {
@@ -21,6 +25,8 @@ export type CategoryFormInput = {
   nameEn: string;
   slug: string;
   parentId: string | null;
+  descriptionTh: string;
+  descriptionEn: string;
 };
 
 type ActionResult = { error?: string };
@@ -29,7 +35,7 @@ const inputClass =
   "w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-800 focus:border-brand-navy focus:outline-none focus:ring-1 focus:ring-brand-navy";
 
 function emptyForm(parentId: string | null = null): CategoryFormInput {
-  return { nameTh: "", nameEn: "", slug: "", parentId };
+  return { nameTh: "", nameEn: "", slug: "", parentId, descriptionTh: "", descriptionEn: "" };
 }
 
 export function CategoryManager({
@@ -41,6 +47,10 @@ export function CategoryManager({
   onDelete,
   onToggle,
   onReorder,
+  onBulkDelete,
+  onBulkActive,
+  canDelete,
+  canPublish,
 }: {
   itemCountLabel: string;
   hasHierarchy: boolean;
@@ -50,6 +60,10 @@ export function CategoryManager({
   onDelete: (id: string) => Promise<ActionResult>;
   onToggle: (id: string, active: boolean) => Promise<ActionResult>;
   onReorder?: (ids: string[]) => Promise<ActionResult>;
+  onBulkDelete: (ids: string[]) => Promise<ActionResult>;
+  onBulkActive: (ids: string[], active: boolean) => Promise<ActionResult>;
+  canDelete: boolean;
+  canPublish: boolean;
 }) {
   const [categories, setCategories] = useState(initialCategories);
   const [adding, setAdding] = useState(false);
@@ -59,6 +73,28 @@ export function CategoryManager({
   const [error, setError] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggleSelected = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const bulk = (label: string, run: (ids: string[]) => Promise<ActionResult>, after: (ids: string[]) => void) => {
+    const ids = [...selected];
+    if (label && !confirm(label.replace("{n}", String(ids.length)))) return;
+    startTransition(async () => {
+      const res = await run(ids);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+      after(ids);
+      setSelected(new Set());
+    });
+  };
 
   const topLevel = categories.filter((c) => !c.parentId);
   const childrenOf = (id: string) => categories.filter((c) => c.parentId === id);
@@ -95,7 +131,14 @@ export function CategoryManager({
 
   const startEdit = (row: CategoryRow) => {
     setEditingId(row.id);
-    setEditForm({ nameTh: row.nameTh, nameEn: row.nameEn ?? "", slug: row.slug, parentId: row.parentId });
+    setEditForm({
+      nameTh: row.nameTh,
+      nameEn: row.nameEn ?? "",
+      slug: row.slug,
+      parentId: row.parentId,
+      descriptionTh: row.descriptionTh ?? "",
+      descriptionEn: row.descriptionEn ?? "",
+    });
     setError(null);
   };
 
@@ -114,7 +157,15 @@ export function CategoryManager({
       setCategories((prev) =>
         prev.map((c) =>
           c.id === id
-            ? { ...c, nameTh: editForm.nameTh, nameEn: editForm.nameEn || null, slug: editForm.slug, parentId: editForm.parentId }
+            ? {
+                ...c,
+                nameTh: editForm.nameTh,
+                nameEn: editForm.nameEn || null,
+                slug: editForm.slug,
+                parentId: editForm.parentId,
+                descriptionTh: editForm.descriptionTh || null,
+                descriptionEn: editForm.descriptionEn || null,
+              }
             : c
         )
       );
@@ -123,7 +174,7 @@ export function CategoryManager({
   };
 
   const remove = (id: string) => {
-    if (!confirm("ลบหมวดหมู่นี้?")) return;
+    if (!confirm("ลบหมวดหมู่นี้? (รายการที่อยู่ในหมวดจะไม่ถูกลบ แต่จะไม่มีหมวดหมู่)")) return;
     startTransition(async () => {
       const res = await onDelete(id);
       if (res.error) {
@@ -236,6 +287,22 @@ export function CategoryManager({
               </select>
             </div>
           )}
+          <div className="w-full grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <textarea
+              rows={2}
+              placeholder="คำอธิบาย (ไทย)"
+              className={inputClass}
+              value={addForm.descriptionTh}
+              onChange={(e) => setAddForm((f) => ({ ...f, descriptionTh: e.target.value }))}
+            />
+            <textarea
+              rows={2}
+              placeholder="คำอธิบาย (อังกฤษ)"
+              className={inputClass}
+              value={addForm.descriptionEn}
+              onChange={(e) => setAddForm((f) => ({ ...f, descriptionEn: e.target.value }))}
+            />
+          </div>
           <button
             type="button"
             disabled={pending}
@@ -247,11 +314,48 @@ export function CategoryManager({
         </div>
       )}
 
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-brand-navy/20 bg-white px-4 py-3 text-sm shadow-sm">
+          <span className="font-medium text-slate-600">เลือกแล้ว {selected.size} รายการ</span>
+          {canPublish && (
+            <>
+              <button type="button" disabled={pending} onClick={() => bulk("", (ids) => onBulkActive(ids, true), (ids) => setCategories((p) => p.map((c) => (ids.includes(c.id) ? { ...c, active: true } : c))))} className="rounded-lg border border-slate-200 px-3 py-1.5 hover:bg-slate-50">
+                เผยแพร่
+              </button>
+              <button type="button" disabled={pending} onClick={() => bulk("", (ids) => onBulkActive(ids, false), (ids) => setCategories((p) => p.map((c) => (ids.includes(c.id) ? { ...c, active: false } : c))))} className="rounded-lg border border-slate-200 px-3 py-1.5 hover:bg-slate-50">
+                ซ่อน
+              </button>
+            </>
+          )}
+          {canDelete && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => bulk("ลบ {n} หมวดหมู่? (รายการในหมวดจะไม่ถูกลบ)", onBulkDelete, (ids) => setCategories((p) => p.filter((c) => !ids.includes(c.id) && !ids.includes(c.parentId ?? ""))))}
+              className="rounded-lg border border-red-200 px-3 py-1.5 text-red-600 hover:bg-red-50"
+            >
+              ลบ
+            </button>
+          )}
+          <button type="button" onClick={() => setSelected(new Set())} className="ml-auto text-xs text-slate-400">
+            ยกเลิกการเลือก
+          </button>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
-              <th className="w-14 px-4 py-3 font-medium">#</th>
+              <th className="w-10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  aria-label="เลือกทั้งหมด"
+                  checked={categories.length > 0 && selected.size === categories.length}
+                  onChange={() => setSelected(selected.size === categories.length ? new Set() : new Set(categories.map((c) => c.id)))}
+                />
+              </th>
+              <th className="w-14 px-2 py-3 font-medium">#</th>
               <th className="px-2 py-3 font-medium">ชื่อไทย</th>
               <th className="px-6 py-3 font-medium">ชื่ออังกฤษ</th>
               <th className="px-6 py-3 font-medium">SLUG</th>
@@ -286,12 +390,20 @@ export function CategoryManager({
                 >
                   {isEditing ? (
                     <>
-                      <td className="px-4 py-3 text-slate-300">{groupIndex}</td>
+                      <td className="px-4 py-3" />
+                      <td className="px-2 py-3 text-slate-300">{groupIndex}</td>
                       <td className="px-2 py-3">
                         <input
                           className={inputClass}
                           value={editForm.nameTh}
                           onChange={(e) => setEditForm((f) => ({ ...f, nameTh: e.target.value }))}
+                        />
+                        <textarea
+                          rows={2}
+                          placeholder="คำอธิบาย (ไทย)"
+                          className={`${inputClass} mt-1`}
+                          value={editForm.descriptionTh}
+                          onChange={(e) => setEditForm((f) => ({ ...f, descriptionTh: e.target.value }))}
                         />
                       </td>
                       <td className="px-6 py-3">
@@ -300,6 +412,13 @@ export function CategoryManager({
                           value={editForm.nameEn}
                           onChange={(e) => setEditForm((f) => ({ ...f, nameEn: e.target.value }))}
                         />
+                        <textarea
+                          rows={2}
+                          placeholder="คำอธิบาย (อังกฤษ)"
+                          className={`${inputClass} mt-1`}
+                          value={editForm.descriptionEn}
+                          onChange={(e) => setEditForm((f) => ({ ...f, descriptionEn: e.target.value }))}
+                        />
                       </td>
                       <td className="px-6 py-3">
                         <input
@@ -307,6 +426,22 @@ export function CategoryManager({
                           value={editForm.slug}
                           onChange={(e) => setEditForm((f) => ({ ...f, slug: e.target.value }))}
                         />
+                        {hasHierarchy && (
+                          <select
+                            className={`${inputClass} mt-1`}
+                            value={editForm.parentId ?? ""}
+                            onChange={(e) => setEditForm((f) => ({ ...f, parentId: e.target.value || null }))}
+                          >
+                            <option value="">— หมวดหมู่หลัก —</option>
+                            {parentOptions
+                              .filter((p) => p.id !== row.id)
+                              .map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.nameTh}
+                                </option>
+                              ))}
+                          </select>
+                        )}
                       </td>
                       <td className="px-6 py-3 text-slate-400">{row.itemCount}</td>
                       <td className="px-6 py-3" />
@@ -332,7 +467,10 @@ export function CategoryManager({
                     </>
                   ) : (
                     <>
-                      <td className="px-4 py-3 text-slate-400">
+                      <td className="px-4 py-3">
+                        <input type="checkbox" aria-label={`เลือก ${row.nameTh}`} checked={selected.has(row.id)} onChange={() => toggleSelected(row.id)} />
+                      </td>
+                      <td className="px-2 py-3 text-slate-400">
                         <div className="flex items-center gap-1.5">
                           {onReorder && (
                             <GripIcon className="h-4 w-4 shrink-0 cursor-grab text-slate-300" />
@@ -343,11 +481,20 @@ export function CategoryManager({
                       <td className={cn("px-2 py-3.5 font-medium text-slate-800", isChild && "pl-8")}>
                         {isChild && <span className="mr-1 text-slate-300">{"›"}</span>}
                         {row.nameTh}
+                        {row.descriptionTh && <p className="truncate text-xs font-normal text-slate-400">{row.descriptionTh}</p>}
                       </td>
                       <td className="px-6 py-3.5 text-slate-500">{row.nameEn || "—"}</td>
                       <td className="px-6 py-3.5 font-mono text-xs text-slate-400">{row.slug}</td>
-                      <td className="px-6 py-3.5 text-slate-600">{row.itemCount}</td>
+                      <td className="px-6 py-3.5 text-slate-600">
+                        <span
+                          className={row.itemCount ? "cursor-help underline decoration-dotted" : undefined}
+                          title={row.itemTitles.length ? row.itemTitles.join("\n") + (row.itemCount > row.itemTitles.length ? "\n…" : "") : undefined}
+                        >
+                          {row.itemCount}
+                        </span>
+                      </td>
                       <td className="px-6 py-3.5">
+                        {canPublish ? (
                         <StatusSelectPill
                           value={row.active ? "1" : "0"}
                           options={[
@@ -358,6 +505,9 @@ export function CategoryManager({
                           ariaLabel={`สถานะ ${row.nameTh}`}
                           onChange={(v) => toggle(row.id, v === "1")}
                         />
+                        ) : (
+                          <span className="text-xs text-slate-500">{row.active ? "เผยแพร่" : "ซ่อน (รออนุมัติ)"}</span>
+                        )}
                       </td>
                       <td className="px-6 py-3.5">
                         <div className="flex items-center justify-end gap-1">
@@ -380,14 +530,16 @@ export function CategoryManager({
                           >
                             <PencilIcon className="h-4 w-4" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => remove(row.id)}
-                            className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
-                            aria-label="ลบ"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => remove(row.id)}
+                              className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
+                              aria-label="ลบ"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </>
@@ -397,7 +549,7 @@ export function CategoryManager({
             })}
             {ordered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
+                <td colSpan={8} className="px-6 py-8 text-center text-slate-400">
                   ยังไม่มีหมวดหมู่
                 </td>
               </tr>

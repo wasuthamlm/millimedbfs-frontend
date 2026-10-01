@@ -3,40 +3,28 @@
 import { useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import {
-  EyeIcon,
-  ExternalLinkIcon,
-  GripIcon,
-  TrashIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-  PlusIcon,
-} from "@/components/ui/admin-icons";
+import { EyeIcon, ExternalLinkIcon, PlusIcon } from "@/components/ui/admin-icons";
 import { SaveButton } from "@/components/admin/SaveButton";
 import { StatusSelectPill } from "@/components/admin/StatusSelectPill";
 import { SeoScoreBadge } from "@/components/admin/articles/SeoScoreBadge";
-import type { PageSection } from "@/data/admin-pages";
+import type { PageSection } from "@/lib/sections";
+import type { RelatedOption } from "@/components/admin/RelatedPicker";
 import type { ArticleView, NewsView } from "@/lib/post-view";
 import type { NavLink } from "@/data/nav";
 import type { FooterColumnData, FooterContactData } from "@/components/layout/Footer";
-import { SectionPreviewBody } from "./SectionPreviewBody";
 import { SectionSettingsPanel } from "./SectionSettingsPanel";
 import { SeoPanel } from "./SeoPanel";
-import { AddBlockButton } from "./AddBlockButton";
+import { SectionsCanvas } from "./SectionsCanvas";
 import { PreviewModal } from "./PreviewModal";
 import { saveSections } from "@/app/admin/pages/[slug]/actions";
-import { setPageStatus } from "@/app/admin/pages/actions";
+import { setPageStatus, type PageSeoInput } from "@/app/admin/pages/actions";
 import { createNavLink } from "@/app/admin/menus/actions";
 
 export function PageEditor({
   page,
   initialSections,
   seoScore,
-  seoTitle,
-  seoDesc,
-  seoTitleEn,
-  seoDescEn,
-  seoNoIndex,
+  seoInitial,
   navLinkCount,
   articleCount,
   newsCount,
@@ -45,15 +33,15 @@ export function PageEditor({
   navLinks,
   footerColumns,
   footerContact,
+  productCategories,
+  articleTypes,
+  productOptions,
+  canPublish,
 }: {
   page: { id: string; slug: string; titleTh: string; titleEn: string; status: "DRAFT" | "PUBLISHED" };
   initialSections: PageSection[];
   seoScore: number;
-  seoTitle: string;
-  seoDesc: string;
-  seoTitleEn: string;
-  seoDescEn: string;
-  seoNoIndex: boolean;
+  seoInitial: PageSeoInput;
   navLinkCount: number;
   articleCount: number;
   newsCount: number;
@@ -62,6 +50,10 @@ export function PageEditor({
   navLinks: NavLink[];
   footerColumns: FooterColumnData[];
   footerContact: FooterContactData | null;
+  productCategories: { id: string; nameTh: string; parentId: string | null }[];
+  articleTypes: { id: string; nameTh: string }[];
+  productOptions: RelatedOption[];
+  canPublish: boolean;
 }) {
   const [sections, setSections] = useState(initialSections);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -70,6 +62,7 @@ export function PageEditor({
   const [status, setStatus] = useState(page.status);
   const [linkCount, setLinkCount] = useState(navLinkCount);
   const [addingMenu, setAddingMenu] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const selected = sections.find((s) => s.id === selectedId) ?? null;
 
@@ -88,32 +81,18 @@ export function PageEditor({
     }
   };
 
-  const move = (index: number, direction: -1 | 1) => {
-    setSections((prev) => {
-      const next = [...prev];
-      const target = index + direction;
-      if (target < 0 || target >= next.length) return prev;
-      [next[index], next[target]] = [next[target], next[index]];
-      return next.map((s, i) => ({ ...s, order: i + 1 }));
-    });
-  };
-
-  const removeSection = (id: string) => {
-    setSections((prev) => prev.filter((s) => s.id !== id).map((s, i) => ({ ...s, order: i + 1 })));
-    setSelectedId((prev) => (prev === id ? null : prev));
-  };
-
   const patchSection = (id: string, patch: Partial<PageSection>) => {
     setSections((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   };
 
-  const addSection = (section: PageSection) => {
-    setSections((prev) => [...prev, { ...section, order: prev.length + 1 }]);
-    setSelectedId(section.id);
-    setTab("block");
+  const doSave = async () => {
+    setSaveError(null);
+    const res = await saveSections(page.slug, page.titleTh, sections);
+    if (res.error) {
+      setSaveError(res.error);
+      throw new Error(res.error);
+    }
   };
-
-  const doSave = () => saveSections(page.slug, page.titleTh, sections);
 
   return (
     <div className="flex flex-col gap-4">
@@ -128,6 +107,7 @@ export function PageEditor({
         <code className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-500">
           {page.slug}
         </code>
+        {canPublish ? (
         <StatusSelectPill
           value={status}
           ariaLabel={`สถานะของ ${page.titleTh}`}
@@ -141,6 +121,9 @@ export function PageEditor({
             void setPageStatus(page.id, value);
           }}
         />
+        ) : (
+          <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs text-slate-500">{status}</span>
+        )}
         {linkCount > 0 ? (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700">
             มีเมนูลิงก์มาหน้านี้ {linkCount} รายการ
@@ -179,8 +162,10 @@ export function PageEditor({
         </div>
       </div>
 
+      {saveError && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{saveError}</div>}
+
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">คลิกบล็อกใดก็ได้บนหน้าเว็บด้านล่าง เพื่อแก้ไขในแผงด้านขวา</p>
+        <p className="text-sm text-slate-500">คลิกบล็อกเพื่อแก้ไขในแผงด้านขวา — ลากบล็อกเพื่อเรียงลำดับ</p>
         <button
           type="button"
           onClick={() => setPreviewOpen(true)}
@@ -192,73 +177,17 @@ export function PageEditor({
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_380px]">
-        <div className="rounded-2xl bg-slate-50 p-4">
-          <div className="flex flex-col gap-6">
-            {sections.map((section, index) => (
-              <div key={section.id} className="relative pt-9">
-                {selectedId === section.id && (
-                  <div className="absolute left-0 top-0 z-10 flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-brand-navy px-2.5 py-1 text-xs font-medium text-white">
-                      <GripIcon className="h-3.5 w-3.5" />
-                      {section.titleTh || "บล็อกใหม่"}
-                    </span>
-                    <button
-                      type="button"
-                      aria-label="เลื่อนขึ้น"
-                      disabled={index === 0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        move(index, -1);
-                      }}
-                      className="rounded-md bg-white p-1.5 text-slate-500 shadow hover:text-slate-800 disabled:opacity-30"
-                    >
-                      <ArrowUpIcon className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="เลื่อนลง"
-                      disabled={index === sections.length - 1}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        move(index, 1);
-                      }}
-                      className="rounded-md bg-white p-1.5 text-slate-500 shadow hover:text-slate-800 disabled:opacity-30"
-                    >
-                      <ArrowDownIcon className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="ลบบล็อก"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeSection(section.id);
-                      }}
-                      className="rounded-md bg-white p-1.5 text-red-500 shadow hover:text-red-600"
-                    >
-                      <TrashIcon className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                )}
-                <div
-                  onClick={() => {
-                    setSelectedId(section.id);
-                    setTab("block");
-                  }}
-                  className={cn(
-                    "cursor-pointer overflow-hidden rounded-xl border bg-white transition-colors",
-                    selectedId === section.id
-                      ? "border-brand-navy ring-2 ring-brand-navy/20"
-                      : "border-slate-200 hover:border-slate-300",
-                  )}
-                >
-                  <SectionPreviewBody section={section} previewArticles={previewArticles} previewNews={previewNews} />
-                </div>
-              </div>
-            ))}
-
-            <AddBlockButton onAdd={addSection} />
-          </div>
-        </div>
+        <SectionsCanvas
+          sections={sections}
+          onChange={setSections}
+          selectedId={selectedId}
+          onSelect={(id) => {
+            setSelectedId(id);
+            setTab("block");
+          }}
+          previewArticles={previewArticles}
+          previewNews={previewNews}
+        />
 
         <div className="h-fit rounded-2xl border border-slate-100 bg-white shadow-sm lg:sticky lg:top-4">
           <div className="flex border-b border-slate-100">
@@ -292,6 +221,9 @@ export function PageEditor({
                 onSave={doSave}
                 articleCount={articleCount}
                 newsCount={newsCount}
+                productCategories={productCategories}
+                articleTypes={articleTypes}
+                productOptions={productOptions}
               />
             ) : (
               <div className="flex flex-col items-center gap-2 px-6 py-16 text-center text-sm text-slate-400">
@@ -305,12 +237,8 @@ export function PageEditor({
               slug={page.slug}
               titleTh={page.titleTh}
               titleEn={page.titleEn}
-              sections={sections}
-              initialSeoTitle={seoTitle}
-              initialSeoDesc={seoDesc}
-              initialSeoTitleEn={seoTitleEn}
-              initialSeoDescEn={seoDescEn}
-              initialSeoNoIndex={seoNoIndex}
+              sections={sections.map((sec) => ({ titleTh: sec.titleTh, bodyTh: sec.config.bodyTh, imageUrl: sec.config.imageUrl }))}
+              initial={seoInitial}
             />
           )}
         </div>

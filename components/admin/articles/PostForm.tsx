@@ -9,6 +9,7 @@ import { FaqEditor, type FaqItem } from "@/components/admin/FaqEditor";
 import { ContentAuditPanel } from "@/components/admin/seo/ContentAuditPanel";
 import { EMPTY_SEO, SeoFields, type SeoValue } from "@/components/admin/seo/SeoFields";
 import { AiArticleWriter } from "@/components/admin/articles/AiArticleWriter";
+import { RelatedPicker, type RelatedOption } from "@/components/admin/RelatedPicker";
 import { SparklesIcon, TrashIcon } from "@/components/ui/admin-icons";
 import { slugify } from "@/lib/slugify";
 import { cn, fromBangkokInput } from "@/lib/utils";
@@ -34,6 +35,8 @@ export type InitialPost = SeoValue & {
   publishedAt: string;
   faq: FaqItem[];
   schemaArticle: Record<string, unknown> | null;
+  relatedPostIds: string[];
+  relatedProductIds: string[];
 };
 
 export type ArticleCategoryOption = { id: string; nameTh: string; slug: string };
@@ -56,6 +59,8 @@ const EMPTY_POST: InitialPost = {
   publishedAt: "",
   faq: [],
   schemaArticle: null,
+  relatedPostIds: [],
+  relatedProductIds: [],
 };
 
 const inputClass =
@@ -70,9 +75,13 @@ export function PostForm({
   categories = [],
   canPublish,
   canDelete,
+  postOptions = [],
+  productOptions = [],
 }: {
   initialPost?: InitialPost;
   categories?: ArticleCategoryOption[];
+  postOptions?: RelatedOption[];
+  productOptions?: RelatedOption[];
   canPublish: boolean;
   canDelete: boolean;
 }) {
@@ -299,6 +308,18 @@ export function PostForm({
               <RichTextEditor value={form.bodyEn} onChange={(html) => update("bodyEn", html)} />
             </div>
             <p className="text-xs text-slate-400 sm:col-span-2">ภาษาอื่น (จีน เกาหลี ญี่ปุ่น ฯลฯ) จัดการได้ที่เมนู “แปลภาษา”</p>
+          </div>
+
+          <div className={cardClass}>
+            <h3 className="text-sm font-semibold text-slate-800 sm:col-span-2">เนื้อหาที่เกี่ยวข้อง</h3>
+            <p className="-mt-2 text-xs text-slate-400 sm:col-span-2">แสดงท้ายบทความ — ถ้าไม่เลือก ระบบจะแสดงบทความล่าสุดในประเภทเดียวกัน 3 รายการ</p>
+            <RelatedPicker
+              label="บทความที่เกี่ยวข้อง"
+              options={postOptions.filter((o) => o.id !== form.id)}
+              value={form.relatedPostIds}
+              onChange={(ids) => update("relatedPostIds", ids)}
+            />
+            <RelatedPicker label="สินค้าที่เกี่ยวข้อง" options={productOptions} value={form.relatedProductIds} onChange={(ids) => update("relatedProductIds", ids)} />
           </div>
         </>
       )}

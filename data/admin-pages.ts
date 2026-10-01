@@ -1,26 +1,6 @@
-export type SectionType = "hero-banners" | "cta-bar" | "company-intro" | "latest-news" | "articles";
-
-export type DeviceVisibility = {
-  desktop: boolean;
-  tablet: boolean;
-  mobile: boolean;
-};
-
-export type PageSection = {
-  id: string;
-  order: number;
-  type: SectionType;
-  titleTh: string;
-  titleEn: string;
-  sourceLabel: string;
-  visibility: DeviceVisibility;
-  columns?: number;
-  itemsToShow?: number;
-  matchedCount?: number;
-  anchorId?: string;
-  bodyTh?: string;
-  imageUrl?: string;
-};
+// Page-builder types live in lib/sections.ts; re-exported here for existing imports.
+export type { SectionType, DeviceVisibility, PageSection, SectionConfig } from "@/lib/sections";
+import type { PageSection } from "@/lib/sections";
 
 // Seed data for the "home" page — the only page-builder page today.
 export const homeSections: PageSection[] = [
@@ -32,6 +12,7 @@ export const homeSections: PageSection[] = [
     titleEn: "Hero Banners",
     sourceLabel: "Banners (เมนู Banners)",
     visibility: { desktop: true, tablet: true, mobile: true },
+    config: {},
   },
   {
     id: "sec2",
@@ -41,6 +22,7 @@ export const homeSections: PageSection[] = [
     titleEn: "CTA Bar",
     sourceLabel: "Settings → Tagline + Biz URL",
     visibility: { desktop: true, tablet: true, mobile: true },
+    config: {},
   },
   {
     id: "sec3",
@@ -51,6 +33,7 @@ export const homeSections: PageSection[] = [
     sourceLabel: "Page Sections (หน้านี้)",
     visibility: { desktop: true, tablet: true, mobile: false },
     columns: 1,
+    config: {},
   },
   {
     id: "sec4",
@@ -62,6 +45,7 @@ export const homeSections: PageSection[] = [
     visibility: { desktop: true, tablet: true, mobile: true },
     itemsToShow: 3,
     matchedCount: 12,
+    config: {},
   },
   {
     id: "sec5",
@@ -74,5 +58,6 @@ export const homeSections: PageSection[] = [
     columns: 4,
     itemsToShow: 8,
     matchedCount: 36,
+    config: {},
   },
 ];

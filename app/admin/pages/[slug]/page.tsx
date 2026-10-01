@@ -1,36 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import type { PageSection, SectionType } from "@/data/admin-pages";
+import type { PageSection } from "@/lib/sections";
+import { rowsToEditorSections } from "@/lib/section-rows";
 import { PageEditor } from "@/components/admin/pages/PageEditor";
+import { canDo } from "@/lib/admin-roles";
+import { getAdminRole } from "@/lib/require-admin";
 import { prisma } from "@/lib/prisma";
 import { POST_CARD_INCLUDE, toArticleView, toNewsView } from "@/lib/post-view";
 import { calculateSeoAeoGeo, pageToScoreInput } from "@/lib/seo-score";
-import type { SectionType as PrismaSectionType } from "@/lib/generated/prisma/client";
 import type { NavLink } from "@/data/nav";
-
-const TYPE_FROM_DB: Record<PrismaSectionType, SectionType> = {
-  HERO_BANNERS: "hero-banners",
-  CTA_BAR: "cta-bar",
-  COMPANY_INTRO: "company-intro",
-  LATEST_NEWS: "latest-news",
-  ARTICLES: "articles",
-  CUSTOM: "articles",
-  // Page-builder types get their own editors in the page-builder phase; until
-  // then they show up as generic company-intro blocks.
-  TEXT: "company-intro",
-  COLUMNS: "company-intro",
-  TEXT_IMAGE: "company-intro",
-  VIDEO: "company-intro",
-  GALLERY: "company-intro",
-  CTA: "cta-bar",
-  LAYOUT: "company-intro",
-  DATA_PRODUCTS: "company-intro",
-  DATA_ARTICLES: "articles",
-  DOWNLOAD: "company-intro",
-  CONTACT_INFO: "company-intro",
-  ABOUT_TEASER: "company-intro",
-  YOUTUBE: "company-intro",
-};
 
 export const dynamic = "force-dynamic";
 
@@ -51,8 +29,21 @@ export default async function PageEditorRoute({
 }) {
   const { slug } = await params;
 
-  const [dbPage, articleCount, newsCount, articlePosts, newsPosts, navRows, footerColumns, footerContact, navLinkCount] =
-    await Promise.all([
+  const [
+    dbPage,
+    articleCount,
+    newsCount,
+    articlePosts,
+    newsPosts,
+    navRows,
+    footerColumns,
+    footerContact,
+    navLinkCount,
+    productCategories,
+    articleTypes,
+    productOptions,
+    role,
+  ] = await Promise.all([
       prisma.page.findUnique({
         where: { slug },
         include: { sections: { orderBy: { order: "asc" } } },
@@ -80,12 +71,16 @@ export default async function PageEditorRoute({
       }),
       prisma.footerContact.findUnique({ where: { id: "singleton" } }),
       prisma.navLink.count({ where: { href: slug === "home" ? "/" : `/${slug}` } }),
+      prisma.productCategory.findMany({ where: { active: true }, orderBy: { order: "asc" }, select: { id: true, nameTh: true, parentId: true } }),
+      prisma.articleCategory.findMany({ where: { active: true }, orderBy: { order: "asc" }, select: { id: true, nameTh: true } }),
+      prisma.product.findMany({ where: { deletedAt: null }, orderBy: { nameTh: "asc" }, select: { id: true, nameTh: true } }),
+      getAdminRole(),
     ]);
 
   if (!dbPage) notFound();
 
-  const previewArticles = articlePosts.map(toArticleView);
-  const previewNews = newsPosts.map(toNewsView);
+  const previewArticles = articlePosts.map((p) => toArticleView(p));
+  const previewNews = newsPosts.map((p) => toNewsView(p));
   const navLinks: NavLink[] = navRows
     .filter((row) => !row.parentId)
     .map((row) => ({
@@ -97,28 +92,7 @@ export default async function PageEditorRoute({
         : undefined,
     }));
 
-  const sections: PageSection[] = dbPage.sections.map((row) => {
-    const config =
-      (row.config as { sourceLabel?: string; anchorId?: string; bodyTh?: string; imageUrl?: string } | null) ?? {};
-    return {
-      id: row.id,
-      order: row.order,
-      type: TYPE_FROM_DB[row.type],
-      titleTh: row.titleTh,
-      titleEn: row.titleEn ?? "",
-      sourceLabel: config.sourceLabel ?? "",
-      anchorId: config.anchorId ?? "",
-      bodyTh: config.bodyTh ?? "",
-      imageUrl: config.imageUrl ?? "",
-      visibility: {
-        desktop: row.visibleDesktop,
-        tablet: row.visibleTablet,
-        mobile: row.visibleMobile,
-      },
-      columns: row.columns ?? undefined,
-      itemsToShow: row.itemsToShow ?? undefined,
-    };
-  });
+  const sections: PageSection[] = rowsToEditorSections(dbPage.sections);
 
   const seoScore = calculateSeoAeoGeo(
     pageToScoreInput({
@@ -129,7 +103,7 @@ export default async function PageEditorRoute({
       seoDesc: dbPage.seoDesc,
       seoDescEn: dbPage.seoDescEn,
       slug: dbPage.slug,
-      sections,
+      sections: sections.map((sec) => ({ titleTh: sec.titleTh, bodyTh: sec.config.bodyTh, imageUrl: sec.config.imageUrl })),
     }),
   ).overall;
 
@@ -138,11 +112,23 @@ export default async function PageEditorRoute({
       page={{ id: dbPage.id, slug: dbPage.slug, titleTh: dbPage.titleTh, titleEn: dbPage.titleEn ?? "", status: dbPage.status }}
       initialSections={sections}
       seoScore={seoScore}
-      seoTitle={dbPage.seoTitle ?? ""}
-      seoDesc={dbPage.seoDesc ?? ""}
-      seoTitleEn={dbPage.seoTitleEn ?? ""}
-      seoDescEn={dbPage.seoDescEn ?? ""}
-      seoNoIndex={dbPage.seoNoIndex}
+      seoInitial={{
+        seoTitle: dbPage.seoTitle ?? "",
+        seoDesc: dbPage.seoDesc ?? "",
+        seoTitleEn: dbPage.seoTitleEn ?? "",
+        seoDescEn: dbPage.seoDescEn ?? "",
+        seoNoIndex: dbPage.seoNoIndex,
+        ogTitle: dbPage.ogTitle ?? "",
+        ogTitleEn: dbPage.ogTitleEn ?? "",
+        ogDesc: dbPage.ogDesc ?? "",
+        ogDescEn: dbPage.ogDescEn ?? "",
+        ogImageUrl: dbPage.ogImageUrl ?? "",
+        canonicalUrl: dbPage.canonicalUrl ?? "",
+        schemaCustom: dbPage.schemaCustom ? JSON.stringify(dbPage.schemaCustom, null, 2) : "",
+        marketingEligible: dbPage.marketingEligible,
+        heroStyle: dbPage.heroStyle ?? "",
+        heroAlignment: dbPage.heroAlignment ?? "",
+      }}
       navLinkCount={navLinkCount}
       articleCount={articleCount}
       newsCount={newsCount}
@@ -151,6 +137,10 @@ export default async function PageEditorRoute({
       navLinks={navLinks}
       footerColumns={footerColumns}
       footerContact={footerContact}
+      productCategories={productCategories}
+      articleTypes={articleTypes}
+      productOptions={productOptions.map((p) => ({ id: p.id, label: p.nameTh }))}
+      canPublish={canDo(role, "page.publish")}
     />
   );
 }

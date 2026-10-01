@@ -4,15 +4,18 @@ import { PostListing } from "@/components/news/PostListing";
 import { prisma } from "@/lib/prisma";
 import { decodeParam, postPath } from "@/lib/public-urls";
 import { localePath } from "@/lib/i18n/locales";
+import { loadLocalizer } from "@/lib/i18n/localize";
+import { localeAlternates } from "@/lib/i18n/alternates";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/news/[type]">): Promise<Metadata> {
-  const type = decodeParam((await params).type);
-  const category = await prisma.articleCategory.findUnique({ where: { slug: type } });
+  const { locale, type: rawType } = await params;
+  const category = await prisma.articleCategory.findUnique({ where: { slug: decodeParam(rawType) } });
   if (!category) return {};
+  const t = await loadLocalizer(locale, [["ARTICLE_CATEGORY", [category.id]]]);
   return {
-    title: category.nameTh,
-    description: category.descriptionTh || undefined,
-    alternates: { canonical: `/news/${encodeURIComponent(category.slug)}` },
+    title: t("ARTICLE_CATEGORY", category.id, "name", category.nameTh, category.nameEn),
+    description: t("ARTICLE_CATEGORY", category.id, "description", category.descriptionTh, category.descriptionEn) || undefined,
+    alternates: await localeAlternates(locale, `/news/${encodeURIComponent(category.slug)}`),
   };
 }
 

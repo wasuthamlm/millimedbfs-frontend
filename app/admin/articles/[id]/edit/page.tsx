@@ -22,7 +22,7 @@ function asFaq(value: unknown): FaqItem[] {
 
 export default async function EditArticlePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [post, categories, role] = await Promise.all([
+  const [post, categories, role, postOptions, productOptions] = await Promise.all([
     prisma.post.findUnique({ where: { id }, include: { coverImage: true } }),
     prisma.articleCategory.findMany({
       where: { active: true },
@@ -30,6 +30,8 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
       select: { id: true, nameTh: true, slug: true },
     }),
     getAdminRole(),
+    prisma.post.findMany({ where: { deletedAt: null }, select: { id: true, titleTh: true }, orderBy: { updatedAt: "desc" } }),
+    prisma.product.findMany({ where: { deletedAt: null }, select: { id: true, nameTh: true }, orderBy: { nameTh: "asc" } }),
   ]);
   if (!post) notFound();
 
@@ -67,6 +69,8 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
       post.schemaArticle && typeof post.schemaArticle === "object" && !Array.isArray(post.schemaArticle)
         ? (post.schemaArticle as Record<string, unknown>)
         : null,
+    relatedPostIds: post.relatedPostIds,
+    relatedProductIds: post.relatedProductIds,
   };
 
   return (
@@ -81,6 +85,8 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
         categories={categories}
         canPublish={canDo(role, "article.publish")}
         canDelete={canDo(role, "article.delete") && !post.deletedAt}
+        postOptions={postOptions.map((p) => ({ id: p.id, label: p.titleTh }))}
+        productOptions={productOptions.map((p) => ({ id: p.id, label: p.nameTh }))}
       />
     </div>
   );

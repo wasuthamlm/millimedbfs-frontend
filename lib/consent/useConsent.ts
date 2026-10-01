@@ -28,7 +28,7 @@ export function useConsent(): {
     hydrateConsent();
     // Module-level state (lib/consent/consentStore.ts) may already have been hydrated
     // by another consumer mounted earlier in the same tree (e.g. CookieConsent runs
-    // before TrackingConsentGate) — force this component to read it on mount too.
+    // before TrackingManager) — force this component to read it on mount too.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     bump((n) => n + 1);
     return unsub;

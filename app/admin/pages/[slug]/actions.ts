@@ -5,23 +5,20 @@ import { revalidateSite } from "@/lib/revalidate-site";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-admin";
 import { logActivity } from "@/lib/activity-log";
-import type { PageSection, SectionType } from "@/data/admin-pages";
-import type { SectionType as PrismaSectionType } from "@/lib/generated/prisma/client";
-
-const TYPE_TO_DB: Record<SectionType, PrismaSectionType> = {
-  "hero-banners": "HERO_BANNERS",
-  "cta-bar": "CTA_BAR",
-  "company-intro": "COMPANY_INTRO",
-  "latest-news": "LATEST_NEWS",
-  articles: "ARTICLES",
-};
+import { buildSectionRows } from "@/lib/section-rows";
+import type { PageSection } from "@/lib/sections";
 
 export async function saveSections(
   pageSlug: string,
   pageTitleTh: string,
-  sections: PageSection[]
-) {
+  sections: PageSection[],
+): Promise<{ error?: string }> {
   const session = await requirePermission("page.edit");
+  if (sections.length > 60) return { error: "บล็อกในหน้าเดียวต้องไม่เกิน 60 บล็อก" };
+
+  const built = buildSectionRows(sections);
+  if ("error" in built) return { error: built.error };
+  const rows = built.rows;
 
   await prisma.$transaction(async (tx) => {
     const page = await tx.page.upsert({
@@ -29,36 +26,16 @@ export async function saveSections(
       update: {},
       create: { slug: pageSlug, titleTh: pageTitleTh, status: "DRAFT" },
     });
-
     await tx.pageSection.deleteMany({ where: { pageId: page.id } });
-
-    for (let i = 0; i < sections.length; i++) {
-      const section = sections[i];
-      await tx.pageSection.create({
-        data: {
-          pageId: page.id,
-          order: i,
-          type: TYPE_TO_DB[section.type],
-          titleTh: section.titleTh,
-          titleEn: section.titleEn,
-          visibleDesktop: section.visibility.desktop,
-          visibleTablet: section.visibility.tablet,
-          visibleMobile: section.visibility.mobile,
-          columns: section.columns,
-          itemsToShow: section.itemsToShow,
-          config: {
-            sourceLabel: section.sourceLabel,
-            anchorId: section.anchorId ?? "",
-            bodyTh: section.bodyTh ?? "",
-            imageUrl: section.imageUrl ?? "",
-          },
-        },
-      });
-    }
+    await tx.pageSection.createMany({ data: rows.map((r) => ({ ...r, pageId: page.id })) });
   });
 
-  await logActivity(session.user, "update", "Page", { targetLabel: pageTitleTh, details: `บันทึกบล็อก ${sections.length} รายการ (${pageSlug})` });
+  await logActivity(session.user, "update", "Page", {
+    targetLabel: pageTitleTh,
+    details: `บันทึกบล็อก ${sections.length} รายการ (${pageSlug})`,
+  });
 
   revalidatePath(`/admin/pages/${pageSlug}`);
   revalidateSite();
+  return {};
 }
