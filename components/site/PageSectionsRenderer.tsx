@@ -16,6 +16,7 @@ import {
   TextImage,
   VideoEmbed,
 } from "@/components/site/sections/blocks";
+import { AnchorNav } from "@/components/site/sections/AnchorNav";
 import { prisma } from "@/lib/prisma";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { POST_CARD_INCLUDE, toArticleView, toNewsView, type ArticleView, type NewsView } from "@/lib/post-view";
@@ -281,6 +282,18 @@ export async function PageSectionsRenderer({
                 }}
               />
             </>,
+          );
+        case "ANCHOR_NAV":
+          return shell(
+            <>
+              <SectionTitle title={title} light={light} />
+              <AnchorNav
+                light={light}
+                label={title || undefined}
+                links={(config.navLinks ?? []).map((l) => ({ anchorId: l.anchorId, label: (lang === "en" && l.labelEn) || l.labelTh }))}
+              />
+            </>,
+            "xl",
           );
         case "ABOUT_TEASER":
           return shell(

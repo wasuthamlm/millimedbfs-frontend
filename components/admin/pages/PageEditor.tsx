@@ -218,6 +218,8 @@ export function PageEditor({
               <SectionSettingsPanel
                 section={selected}
                 onChange={(patch) => patchSection(selected.id, patch)}
+                sections={sections}
+                onPatchSection={patchSection}
                 onSave={doSave}
                 articleCount={articleCount}
                 newsCount={newsCount}

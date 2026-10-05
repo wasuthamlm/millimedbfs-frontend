@@ -295,6 +295,7 @@ enum SectionType {
   CONTACT_INFO
   ABOUT_TEASER
   YOUTUBE
+  ANCHOR_NAV
 }
 
 // Belongs to either a Page or a LandingPage (exactly one of pageId / landingPageId is set)

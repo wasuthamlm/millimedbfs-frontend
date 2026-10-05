@@ -12,6 +12,7 @@ import {
   TextImage,
   VideoEmbed,
 } from "@/components/site/sections/blocks";
+import { AnchorNav } from "@/components/site/sections/AnchorNav";
 import { BLOCK_TYPES, type PageSection } from "@/lib/sections";
 import type { ArticleView, NewsView } from "@/lib/post-view";
 import { banners } from "@/data/admin-banners";
@@ -150,6 +151,17 @@ export function SectionPreviewBody({
       );
     case "contact-info":
       return <Placeholder>ข้อมูลติดต่อและแผนที่ จากการตั้งค่า</Placeholder>;
+    case "anchor-nav":
+      return shell(
+        <>
+          <SectionTitle title={title} light={light} />
+          {config.navLinks?.length ? (
+            <AnchorNav light={light} links={config.navLinks.map((l) => ({ anchorId: l.anchorId, label: l.labelTh || l.anchorId }))} />
+          ) : (
+            <Placeholder>ยังไม่มีลิงก์ — คลิกเพื่อเพิ่ม</Placeholder>
+          )}
+        </>,
+      );
     case "about-teaser":
       return shell(
         <>

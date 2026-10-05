@@ -1,7 +1,7 @@
 import "server-only";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { sanitizeHtml } from "@/lib/sanitize";
-import { TYPE_FROM_DB, TYPE_TO_DB, parseConfig, type PageSection, type SectionConfig } from "@/lib/sections";
+import { TYPE_FROM_DB, TYPE_TO_DB, parseConfig, sanitizeAnchorId, type PageSection, type SectionConfig } from "@/lib/sections";
 
 // Per-block config JSON is admin-authored; cap it so a runaway paste can't bloat the row.
 const MAX_CONFIG_BYTES = 200_000;
@@ -18,7 +18,13 @@ function cleanConfig(config: SectionConfig): SectionConfig {
       bodyEn: c.bodyEn ? sanitizeHtml(c.bodyEn) : c.bodyEn,
     }));
   }
-  if (clean.anchorId) clean.anchorId = clean.anchorId.replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60);
+  if (clean.anchorId) clean.anchorId = sanitizeAnchorId(clean.anchorId);
+  if (clean.navLinks) {
+    clean.navLinks = clean.navLinks
+      .slice(0, 20)
+      .map((l) => ({ labelTh: l.labelTh.slice(0, 120), labelEn: l.labelEn?.slice(0, 120) || undefined, anchorId: sanitizeAnchorId(l.anchorId) }))
+      .filter((l) => l.anchorId);
+  }
   return clean;
 }
 
@@ -42,6 +48,13 @@ export function buildSectionRows(sections: PageSection[]) {
       config: { ...config, sourceLabel: section.sourceLabel } as Prisma.InputJsonValue,
     };
   });
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const anchorId = (r.config as SectionConfig).anchorId;
+    if (!anchorId) continue;
+    if (seen.has(anchorId)) return { error: `Anchor ID ซ้ำกัน: #${anchorId} — แต่ละบล็อกต้องใช้ Anchor ID ไม่ซ้ำกัน` };
+    seen.add(anchorId);
+  }
   if (rows.some((r) => JSON.stringify(r.config).length > MAX_CONFIG_BYTES)) {
     return { error: "เนื้อหาในบล็อกใหญ่เกินไป (เกิน 200KB) — ลองแบ่งเป็นหลายบล็อก" };
   }

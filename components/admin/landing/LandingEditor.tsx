@@ -248,6 +248,8 @@ export function LandingEditor({
               <SectionSettingsPanel
                 section={selected}
                 onChange={(p) => setSections((prev) => prev.map((s) => (s.id === selected.id ? { ...s, ...p } : s)))}
+                sections={sections}
+                onPatchSection={(id, p) => setSections((prev) => prev.map((s) => (s.id === id ? { ...s, ...p } : s)))}
                 onSave={save}
                 articleCount={articleCount}
                 newsCount={newsCount}

@@ -48,7 +48,9 @@ export function SectionsCanvas({
   };
 
   const duplicateSection = (index: number) => {
-    const copy: PageSection = { ...structuredClone(sections[index]), id: crypto.randomUUID() };
+    const source = structuredClone(sections[index]);
+    // Anchor IDs must stay unique on the page, so the copy starts without one.
+    const copy: PageSection = { ...source, id: crypto.randomUUID(), config: { ...source.config, anchorId: undefined } };
     update((prev) => {
       const next = [...prev];
       next.splice(index + 1, 0, copy);

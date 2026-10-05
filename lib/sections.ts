@@ -24,7 +24,8 @@ export type SectionType =
   | "download"
   | "contact-info"
   | "about-teaser"
-  | "youtube";
+  | "youtube"
+  | "anchor-nav";
 
 export const TYPE_TO_DB: Record<SectionType, DbSectionType> = {
   "hero-banners": "HERO_BANNERS",
@@ -45,6 +46,7 @@ export const TYPE_TO_DB: Record<SectionType, DbSectionType> = {
   "contact-info": "CONTACT_INFO",
   "about-teaser": "ABOUT_TEASER",
   youtube: "YOUTUBE",
+  "anchor-nav": "ANCHOR_NAV",
 };
 
 export const TYPE_FROM_DB = Object.fromEntries(Object.entries(TYPE_TO_DB).map(([k, v]) => [v, k])) as Record<DbSectionType, SectionType>;
@@ -89,6 +91,9 @@ export type LayoutColumn = {
   cta?: CtaButtons;
 };
 
+/** ANCHOR_NAV: one in-page link; anchorId is the target block's Anchor ID. */
+export type AnchorLink = { labelTh: string; labelEn?: string; anchorId: string };
+
 export type AboutCard = { titleTh: string; titleEn?: string; bodyTh: string; bodyEn?: string; imageUrl?: string; href?: string };
 
 export type SectionConfig = {
@@ -120,6 +125,8 @@ export type SectionConfig = {
   articleTypeId?: string;
   /** ABOUT_TEASER */
   cards?: AboutCard[];
+  /** ANCHOR_NAV */
+  navLinks?: AnchorLink[];
 };
 
 export type PageSection = {
@@ -192,6 +199,12 @@ export const BLOCK_TYPES: Record<SectionType, BlockMeta> = {
   "hero-banners": { label: "Hero Banners", description: "สไลด์จากเมนู Banners", sourceLabel: "Banners (เมนู Banners)", defaults: {} },
   download: { label: "ดาวน์โหลดไฟล์", description: "ปุ่มดาวน์โหลด PDF", sourceLabel: "คลังสื่อ", defaults: { config: { fileLabelTh: "ดาวน์โหลด" } } },
   "contact-info": { label: "ข้อมูลติดต่อ", description: "ที่อยู่ โทร อีเมล แผนที่ จาก Settings", sourceLabel: "Settings → ข้อมูลติดต่อ", defaults: {} },
+  "anchor-nav": {
+    label: "เมนูนำทางในหน้า",
+    description: "แถบลิงก์ กดแล้วเลื่อนไปยังบล็อกในหน้านี้",
+    sourceLabel: "บล็อกในหน้านี้",
+    defaults: { config: { navLinks: [], spacing: { paddingY: "sm" } } },
+  },
   "about-teaser": {
     label: "การ์ดแนะนำ",
     description: "การ์ดรูป + ข้อความหลายใบ",
@@ -216,6 +229,11 @@ export function newSection(type: SectionType): PageSection {
     ...meta.defaults,
     config: { ...(meta.defaults.config ?? {}) },
   };
+}
+
+/** Anchor IDs are used as HTML ids and URL fragments — keep them to [A-Za-z0-9_-]. */
+export function sanitizeAnchorId(value: string) {
+  return value.trim().replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60);
 }
 
 /** Normalises a stored config JSON (older rows kept bodyTh/imageUrl at the top level, which is still the shape). */

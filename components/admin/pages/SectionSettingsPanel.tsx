@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon, DatabaseIcon, PlusIcon, TrashIcon } from "@/components/ui/admin-icons";
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, DatabaseIcon, PlusIcon, TrashIcon } from "@/components/ui/admin-icons";
 import { SaveButton } from "@/components/admin/SaveButton";
 import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import { ImageUploader } from "@/components/admin/ImageUploader";
@@ -10,7 +10,9 @@ import { RelatedPicker, type RelatedOption } from "@/components/admin/RelatedPic
 import { cn } from "@/lib/utils";
 import {
   BLOCK_TYPES,
+  sanitizeAnchorId,
   type AboutCard,
+  type AnchorLink,
   type CtaButtons,
   type DeviceVisibility,
   type LayoutColumn,
@@ -78,6 +80,128 @@ function CtaFields({ value, onChange }: { value: CtaButtons; onChange: (v: CtaBu
   );
 }
 
+const blockName = (s: PageSection) => s.customLabel || s.titleTh || BLOCK_TYPES[s.type]?.label || "บล็อก";
+
+/** ANCHOR_NAV links. Picking a target block gives it an Anchor ID if it has none. */
+function AnchorLinksEditor({
+  self,
+  links,
+  onChange,
+  sections,
+  onPatchSection,
+}: {
+  self: PageSection;
+  links: AnchorLink[];
+  onChange: (links: AnchorLink[]) => void;
+  sections: PageSection[];
+  onPatchSection?: (id: string, patch: Partial<PageSection>) => void;
+}) {
+  const targets = sections.filter((s) => s.id !== self.id && s.type !== "anchor-nav");
+  const update = (i: number, patch: Partial<AnchorLink>) => onChange(links.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= links.length) return;
+    const next = [...links];
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+
+  // Hands out unused "section-N" ids; `used` is shared across one batch so new ids don't collide.
+  const takenIds = () => new Set(sections.map((s) => s.config.anchorId).filter(Boolean) as string[]);
+  const ensureAnchor = (target: PageSection, used: Set<string>) => {
+    if (target.config.anchorId) return target.config.anchorId;
+    let n = sections.indexOf(target) + 1;
+    while (used.has(`section-${n}`)) n++;
+    const id = `section-${n}`;
+    used.add(id);
+    onPatchSection?.(target.id, { config: { ...target.config, anchorId: id } });
+    return id;
+  };
+
+  const pickTarget = (i: number, targetId: string) => {
+    const target = targets.find((s) => s.id === targetId);
+    if (!target) return;
+    const link = links[i];
+    update(i, {
+      anchorId: ensureAnchor(target, takenIds()),
+      labelTh: link.labelTh || target.titleTh,
+      labelEn: link.labelEn || target.titleEn || undefined,
+    });
+  };
+
+  const fillFromBlocks = () => {
+    if (links.length && !window.confirm("แทนที่ลิงก์ทั้งหมดด้วยบล็อกที่มีหัวข้อด้านล่าง?")) return;
+    const used = takenIds();
+    const below = sections.slice(sections.findIndex((s) => s.id === self.id) + 1);
+    onChange(
+      below
+        .filter((s) => s.type !== "anchor-nav" && s.titleTh.trim())
+        .map((s) => ({ labelTh: s.titleTh, labelEn: s.titleEn || undefined, anchorId: ensureAnchor(s, used) })),
+    );
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-slate-500">เลือกบล็อกปลายทาง ระบบจะตั้ง Anchor ID ให้บล็อกนั้นอัตโนมัติ (แก้ได้ที่ ขั้นสูง → Anchor ID ของบล็อกนั้น)</p>
+      {links.map((link, i) => {
+        const target = targets.find((s) => s.config.anchorId && s.config.anchorId === link.anchorId);
+        return (
+          <div key={i} className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500">ลิงก์ที่ {i + 1}</span>
+              <div className="flex items-center gap-1">
+                <button type="button" aria-label="เลื่อนขึ้น" disabled={i === 0} onClick={() => move(i, -1)} className="rounded p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-30">
+                  <ArrowUpIcon className="h-4 w-4" />
+                </button>
+                <button type="button" aria-label="เลื่อนลง" disabled={i === links.length - 1} onClick={() => move(i, 1)} className="rounded p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-30">
+                  <ArrowDownIcon className="h-4 w-4" />
+                </button>
+                <button type="button" aria-label="ลบลิงก์" onClick={() => onChange(links.filter((_, idx) => idx !== i))} className="rounded p-1 text-red-500 hover:bg-red-50">
+                  <TrashIcon className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <Field label="ไปที่บล็อก">
+              <select className={inputClass} value={target?.id ?? ""} onChange={(e) => pickTarget(i, e.target.value)}>
+                <option value="">{link.anchorId ? `#${link.anchorId} (ไม่พบบล็อกนี้ในหน้า)` : "— เลือกบล็อก —"}</option>
+                {targets.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {blockName(s)}
+                    {s.config.anchorId ? ` (#${s.config.anchorId})` : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <input className={inputClass} placeholder="ข้อความลิงก์ (TH)" value={link.labelTh} onChange={(e) => update(i, { labelTh: e.target.value })} />
+              <input className={inputClass} placeholder="Link text (EN)" value={link.labelEn ?? ""} onChange={(e) => update(i, { labelEn: e.target.value })} />
+            </div>
+            <input
+              className={inputClass}
+              placeholder="หรือพิมพ์ Anchor ID เอง เช่น about"
+              value={link.anchorId}
+              onChange={(e) => update(i, { anchorId: sanitizeAnchorId(e.target.value) })}
+            />
+          </div>
+        );
+      })}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => onChange([...links, { labelTh: "", anchorId: "" }])}
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 py-2 text-sm text-slate-600 hover:bg-slate-50"
+        >
+          <PlusIcon className="h-4 w-4" />
+          เพิ่มลิงก์
+        </button>
+        <button type="button" onClick={fillFromBlocks} className="rounded-lg border border-brand-navy/30 py-2 text-sm text-brand-navy hover:bg-brand-navy/5">
+          สร้างจากบล็อกด้านล่างทั้งหมด
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function SectionSettingsPanel({
   section,
   onChange,
@@ -87,6 +211,8 @@ export function SectionSettingsPanel({
   productCategories,
   articleTypes,
   productOptions,
+  sections = [],
+  onPatchSection,
 }: {
   section: PageSection;
   onChange: (patch: Partial<PageSection>) => void;
@@ -96,6 +222,10 @@ export function SectionSettingsPanel({
   productCategories: { id: string; nameTh: string; parentId: string | null }[];
   articleTypes: { id: string; nameTh: string }[];
   productOptions: RelatedOption[];
+  /** Every block on the page — the anchor-nav block links to these. */
+  sections?: PageSection[];
+  /** Patches another block (gives a link target its Anchor ID). */
+  onPatchSection?: (id: string, patch: Partial<PageSection>) => void;
 }) {
   const config = section.config;
   const setConfig = (patch: Partial<SectionConfig>) => onChange({ config: { ...config, ...patch } });
@@ -200,6 +330,10 @@ export function SectionSettingsPanel({
         {t === "hero-banners" && <p className="text-xs text-slate-500">สไลด์มาจากเมนู หน้าเว็บ → จัดการ Banners</p>}
 
         {t === "gallery" && <GalleryEditor value={(config.galleryUrls ?? []).map((url) => ({ url, alt: "" }))} onChange={(g) => setConfig({ galleryUrls: g.map((x) => x.url) })} />}
+
+        {t === "anchor-nav" && (
+          <AnchorLinksEditor self={section} links={config.navLinks ?? []} onChange={(navLinks) => setConfig({ navLinks })} sections={sections} onPatchSection={onPatchSection} />
+        )}
 
         {t === "cta" && <CtaFields value={config.cta ?? {}} onChange={(cta) => setConfig({ cta })} />}
 
